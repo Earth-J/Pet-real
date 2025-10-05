@@ -19,7 +19,7 @@
     "stuffs": "^0.1.17"
   },
   "scripts": {
-    "start": "node ./deploySlash.js guild 954103060924350465 && node index.js"
+    "start": "node ./deploySlash.js guild 1169274513901486192 && node index.js"
   },
   "author": "Adivise",
   "license": "MIT",
