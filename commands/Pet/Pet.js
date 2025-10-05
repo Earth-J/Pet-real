@@ -307,7 +307,7 @@ function drawCenterStatus(ctx, text) {
   const fontSize = parseInt(process.env.PET_STATUS_FONT_SIZE || '12');
   ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
   // เงาบางๆ ให้ตัวอักษรอ่านง่าย
-  ctx.fillStyle = '#0D0D0D';
+  ctx.fillStyle = '#FFFFFF';
   ctx.fillText(text, centerX, statusY + 1);
   ctx.fillStyle = '#000000';
   ctx.fillText(text, centerX, statusY);
@@ -361,7 +361,7 @@ function drawStatusBars(ctx, pet) {
     const hi = 1.5;
     ctx.save();
     ctx.globalAlpha = 0.4;
-    ctx.fillStyle = "#0D0D0D";
+    ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(x, y, maxW, Math.min(hi, h));
     ctx.restore();
     // เงาด้านล่าง
@@ -517,7 +517,7 @@ async function makeEmojiPngDataUrl(emoji) {
   return `data:image/png;base64,${Buffer.from(buf).toString('base64')}`;
 }
 
-async function makeSolidPngDataUrl(color = '#0D0D0D', width = 300, height = 300) {
+async function makeSolidPngDataUrl(color = '#ffffff', width = 300, height = 300) {
   const c = Canvas.createCanvas(width, height);
   const ctx = c.getContext('2d');
   ctx.fillStyle = color;
@@ -567,7 +567,7 @@ async function makeNameTagDataUrl(text) {
   ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#0D0D0D';
+  ctx.fillStyle = '#FFFFFF';
   ctx.fillText(String(text || ''), Math.floor(width / 2), Math.floor(height / 2));
   const buf = await c.encode('png');
   return { url: `data:image/png;base64,${Buffer.from(buf).toString('base64')}`, w: width, h: height };
