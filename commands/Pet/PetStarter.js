@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, AttachmentBuilder, SelectMenuOptionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, AttachmentBuilder, StringSelectMenuOptionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require("discord.js");
 const GPet = require("../../settings/models/pet.js");
 const GProfile = require("../../settings/models/profile.js");
 const GInv = require("../../settings/models/inventory.js");
@@ -67,15 +67,15 @@ module.exports = {
         .setPlaceholder(`เลือกสัตว์เริ่มต้นฟรี`)
         .setMaxValues(1)
         .setMinValues(1)
-        .setOptions(object.map(key => new SelectMenuOptionBuilder()
-          .setLabel(`${toOppositeCase(key.name)} | เลเวลเริ่มต้น ${key.level}`)
+        .setOptions(object.map(key => new StringSelectMenuOptionBuilder()
+          .setLabel(`${toOppositeCase(key.name)} | เลเวลเริ่มต้นที่ ${key.level}`)
           .setValue(key.type)
         ))
     ]);
 
     const canvas = Canvas.createCanvas(450, 300);
     const ctx = canvas.getContext("2d");
-    const shop = await Canvas.loadImage("./assests/shop/select.png");
+    const shop = await Canvas.loadImage("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/select-pet.png");
     ctx.drawImage(shop, 0, 0, canvas.width, canvas.height);
     const attc = new AttachmentBuilder(await canvas.encode("png"), { name: `select.png` })
 
@@ -109,7 +109,7 @@ module.exports = {
       const modal = new ModalBuilder().setCustomId('pet_starter_modal').setTitle('ตั้งชื่อสัตว์เลี้ยง');
       const nameInput = new TextInputBuilder()
         .setCustomId('nickname')
-        .setLabel('ชื่อเล่น (ภาษาอังกฤษเท่านั้น สูงสุด 10 ตัวอักษร)')
+        .setLabel('ชื่อเล่น (อังกฤษเท่านั้น, ≤10 ตัว)')
         .setStyle(TextInputStyle.Short)
         .setMaxLength(10)
         .setRequired(true);
