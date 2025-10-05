@@ -1,6 +1,7 @@
 const { EmbedBuilder, AttachmentBuilder } = require("discord.js");
 const GPet = require("../../settings/models/pet.js");
 const Canvas = require("@napi-rs/canvas");
+const { GlobalFonts } = require("@napi-rs/canvas");
 const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
@@ -35,8 +36,8 @@ async function registerRemoteThaiFont() {
     const res = await fetch(REMOTE_FONT_URL, { signal: controller.signal });
     if (!res.ok) return false;
     const buf = Buffer.from(await res.arrayBuffer());
-    if (Canvas.GlobalFonts && typeof Canvas.GlobalFonts.registerFromBuffer === 'function') {
-      Canvas.GlobalFonts.registerFromBuffer(buf, STATUS_FONT_FAMILY);
+    if (GlobalFonts && typeof GlobalFonts.registerFromBuffer === 'function') {
+      GlobalFonts.registerFromBuffer(buf, STATUS_FONT_FAMILY);
     }
     THAI_FONT_READY = true;
     return true;
@@ -63,10 +64,8 @@ function ensureThaiFontRegistered() {
     ];
     for (const fp of fontCandidates) {
       if (fs.existsSync(fp)) {
-        if (Canvas.GlobalFonts && typeof Canvas.GlobalFonts.registerFromPath === 'function') {
-          Canvas.GlobalFonts.registerFromPath(fp, STATUS_FONT_FAMILY);
-        } else if (typeof Canvas.registerFont === 'function') {
-          Canvas.registerFont(fp, { family: STATUS_FONT_FAMILY });
+        if (GlobalFonts && typeof GlobalFonts.registerFromPath === 'function') {
+          GlobalFonts.registerFromPath(fp, STATUS_FONT_FAMILY);
         }
         THAI_FONT_READY = true;
         break;
