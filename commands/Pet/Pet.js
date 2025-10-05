@@ -342,10 +342,11 @@ function drawStatusBars(ctx, pet) {
   // EXP + LV/XP%
   ctx.fillStyle = "#eeb32e";
   ctx.fillRect(92, 20, expbar, 14);
-  ctx.font = `bold 12px ${STATUS_FONT_FAMILY}`;
+  const fontFamilySafe = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
+  ctx.font = `bold 12px ${fontFamilySafe}`;
   ctx.fillStyle = "#000001";
   ctx.fillText(`LV: ${pet.level}`, 92, 30);
-  ctx.font = `bold 12px ${STATUS_FONT_FAMILY}`;
+  ctx.font = `bold 12px ${fontFamilySafe}`;
   ctx.fillStyle = "#000001";
   ctx.fillText(`XP: ${expbar2 || "0"}%`, 190, 30);
 
