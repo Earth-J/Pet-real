@@ -306,7 +306,7 @@ function drawCenterStatus(ctx, text) {
   // ใช้ฟอนต์ไทย ถ้าลงทะเบียนได้ สำรองเป็น sans-serif
   const fontFamily = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
   const fontSize = parseInt(process.env.PET_STATUS_FONT_SIZE || '12');
-  ctx.font = `bold ${fontSize}px ${fontFamily}`;
+  ctx.font = `bold ${fontSize}px '${fontFamily}'`;
   // เงาบางๆ ให้ตัวอักษรอ่านง่าย
   ctx.fillStyle = '#FFFFFF';
   ctx.fillText(text, centerX, statusY + 1);
@@ -343,10 +343,10 @@ function drawStatusBars(ctx, pet) {
   ctx.fillStyle = "#eeb32e";
   ctx.fillRect(92, 20, expbar, 14);
   const fontFamilySafe = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
-  ctx.font = `bold 12px ${fontFamilySafe}`;
+  ctx.font = `bold 12px '${fontFamilySafe}'`;
   ctx.fillStyle = "#000001";
   ctx.fillText(`LV: ${pet.level}`, 92, 30);
-  ctx.font = `bold 12px ${fontFamilySafe}`;
+  ctx.font = `bold 12px '${fontFamilySafe}'`;
   ctx.fillStyle = "#000001";
   ctx.fillText(`XP: ${expbar2 || "0"}%`, 190, 30);
 
