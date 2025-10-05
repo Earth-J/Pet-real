@@ -537,7 +537,7 @@ async function makeNameTagDataUrl(text) {
   // วัดความกว้างข้อความ
   let c = Canvas.createCanvas(1, 1);
   let ctx = c.getContext('2d');
-  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
+  ctx.font = `bold ${fontSize}px '${fontFamily}'`;
   const metrics = ctx.measureText(String(text || ''));
   const textW = Math.ceil(metrics.width);
   const textH = Math.ceil(fontSize + 2);
@@ -565,7 +565,7 @@ async function makeNameTagDataUrl(text) {
   ctx.fill();
   ctx.restore();
   // ข้อความสีขาว + เงาดำบางๆ
-  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
+  ctx.font = `bold ${fontSize}px '${fontFamily}'`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#FFFFFF';
