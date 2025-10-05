@@ -343,10 +343,10 @@ function drawStatusBars(ctx, pet) {
   ctx.fillRect(92, 20, expbar, 14);
   const fontFamilySafe = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
   ctx.font = `bold 12px 'Gotham Rnd SSm'`;
-  ctx.fillStyle = "#000001";
+  ctx.fillStyle = "#ffffff";
   ctx.fillText(`LV: ${pet.level}`, 92, 30);
   ctx.font = `bold 12px 'Gotham Rnd SSm'`;
-  ctx.fillStyle = "#000001";
+  ctx.fillStyle = "#ffffff";
   ctx.fillText(`XP: ${expbar2 || "0"}%`, 190, 30);
 
   // helper: วาดเฉพาะส่วนที่เติม + เส้นแสง/เงา 2px (ไม่มีราง/กรอบ)
