@@ -341,11 +341,11 @@ function drawStatusBars(ctx, pet) {
   // EXP + LV/XP%
   ctx.fillStyle = "#eeb32e";
   ctx.fillRect(92, 20, expbar, 14);
-  const fontFamilySafe = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
-  ctx.font = `bold 12px '${fontFamilySafe}'`;
+  const fontFamilySafe = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'Gotham Rnd SSm';
+  ctx.font = `bold 12px 'Gotham Rnd SSm'`;
   ctx.fillStyle = "#000001";
   ctx.fillText(`LV: ${pet.level}`, 92, 30);
-  ctx.font = `bold 12px '${fontFamilySafe}'`;
+  ctx.font = `bold 12px 'Gotham Rnd SSm'`;
   ctx.fillStyle = "#000001";
   ctx.fillText(`XP: ${expbar2 || "0"}%`, 190, 30);
 
