@@ -333,7 +333,7 @@ function resetTextShadow(ctx) {
 
 function drawRow(ctx, x, y, emoji, text, isBg) {
     // Use contrasting text color depending on background type
-    ctx.fillStyle = isBg ? "#0e1b2a" : "#ffffff";
+    ctx.fillStyle = isBg ? "#ffffff" : "#ffffff";
     if (emoji) {
         ctx.font = "28px 'Gotham Rnd SSm'";
         setTextShadow(ctx);
