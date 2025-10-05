@@ -26,15 +26,50 @@ function buildInfoEmbed(description, color = '#e8f093', title) {
 
 // ลงทะเบียนฟอนต์ไทย (ถ้ามีไฟล์ในโปรเจกต์)
 let THAI_FONT_READY = false;
-const STATUS_FONT_FAMILY = process.env.PET_STATUS_FONT_FAMILY || 'Noto Sans Thai';
+const STATUS_FONT_FAMILY = process.env.PET_STATUS_FONT_FAMILY || 'Minecraft';
+// พยายามโหลดฟอนต์ไทยจาก CDN ก่อน (เช่นเดียวกับ Balance.js) แล้วจึง fallback เป็นไฟล์ในโปรเจกต์
+const REMOTE_THAI_FONT_URLS = [
+  // ใช้ฟอนต์เดียวเท่านั้น: Minecraft.ttf จาก CDN
+  'https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/Minecraft.ttf',
+];
+async function registerRemoteThaiFont() {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), 2500);
+  try {
+    for (const url of REMOTE_THAI_FONT_URLS) {
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) continue;
+        const buf = Buffer.from(await res.arrayBuffer());
+        if (Canvas.GlobalFonts && typeof Canvas.GlobalFonts.registerFromBuffer === 'function') {
+          Canvas.GlobalFonts.registerFromBuffer(buf, STATUS_FONT_FAMILY);
+        } else if (typeof Canvas.registerFont === 'function') {
+          // Canvas.registerFont ไม่รองรับ buffer โดยตรงใน @napi-rs/canvas รุ่นนี้ ส่วนใหญ่ใช้ GlobalFonts
+          // จึงข้ามกรณีนี้ไป
+        }
+        THAI_FONT_READY = true;
+        return true;
+      } catch (_) { /* ลอง URL ถัดไป */ }
+    }
+    return false;
+  } finally {
+    clearTimeout(id);
+  }
+}
+// พยายามลงทะเบียนจาก CDN เมื่อโหลดไฟล์ครั้งแรก
+(async () => {
+  try {
+    if (!THAI_FONT_READY) {
+      await registerRemoteThaiFont();
+    }
+  } catch (_) { /* ignore */ }
+})();
 function ensureThaiFontRegistered() {
   if (THAI_FONT_READY) return;
   try {
     const fontCandidates = [
-      path.join(__dirname, '../../assests/fonts/NotoSansThai-Regular.ttf'),
-      path.join(__dirname, '../../assests/fonts/Prompt-Regular.ttf'),
-      path.join(process.cwd(), 'assests/fonts/NotoSansThai-Regular.ttf'),
-      path.join(process.cwd(), 'assests/fonts/Prompt-Regular.ttf'),
+      path.join(__dirname, '../../assests/fonts/Minecraft.ttf'),
+      path.join(process.cwd(), 'assests/fonts/Minecraft.ttf'),
     ];
     for (const fp of fontCandidates) {
       if (fs.existsSync(fp)) {
@@ -317,10 +352,10 @@ function drawStatusBars(ctx, pet) {
   // EXP + LV/XP%
   ctx.fillStyle = "#eeb32e";
   ctx.fillRect(92, 20, expbar, 14);
-  ctx.font = "bold 12px Arial";
+  ctx.font = `bold 12px "${THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif'}"`;
   ctx.fillStyle = "#000001";
   ctx.fillText(`LV: ${pet.level}`, 92, 30);
-  ctx.font = "bold 12px Arial";
+  ctx.font = `bold 12px "${THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif'}"`;
   ctx.fillStyle = "#000001";
   ctx.fillText(`XP: ${expbar2 || "0"}%`, 190, 30);
 
