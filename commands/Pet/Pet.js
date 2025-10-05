@@ -27,7 +27,7 @@ function buildInfoEmbed(description, color = '#e8f093', title) {
 
 // ลงทะเบียนฟอนต์สำหรับการ์ด (รองรับไทย) จาก CDN พร้อม fallback เป็นไฟล์ภายในโปรเจกต์
 let THAI_FONT_READY = false;
-const STATUS_FONT_FAMILY = process.env.PET_STATUS_FONT_FAMILY || 'sans-serif';
+const STATUS_FONT_FAMILY = process.env.PET_STATUS_FONT_FAMILY || 'Gotham Rnd SSm';
 const REMOTE_FONT_URL = 'https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/gothamrndssm_light.otf';
 async function registerRemoteThaiFont() {
   const controller = new AbortController();
@@ -343,10 +343,10 @@ function drawStatusBars(ctx, pet) {
   ctx.fillRect(92, 20, expbar, 14);
   const fontFamilySafe = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
   ctx.font = `bold 12px 'sans-serif'`;
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = "#FFFFFF";
   ctx.fillText(`LV: ${pet.level}`, 92, 30);
   ctx.font = `bold 12px 'sans-serif'`;
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = "#FFFFFF";
   ctx.fillText(`XP: ${expbar2 || "0"}%`, 190, 30);
 
   // helper: วาดเฉพาะส่วนที่เติม + เส้นแสง/เงา 2px (ไม่มีราง/กรอบ)
