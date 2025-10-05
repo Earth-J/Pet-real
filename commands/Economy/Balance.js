@@ -332,14 +332,15 @@ function resetTextShadow(ctx) {
 }
 
 function drawRow(ctx, x, y, emoji, text, isBg) {
-    ctx.fillStyle = "#ffffff";
+    // Use contrasting text color depending on background type
+    ctx.fillStyle = isBg ? "#0e1b2a" : "#ffffff";
     if (emoji) {
         ctx.font = "28px 'Gotham Rnd SSm'";
         setTextShadow(ctx);
         ctx.fillText(emoji, x, y);
         resetTextShadow(ctx);
     }
-    ctx.font = isBg ? "500 18px 'Gotham Rnd SSm'" : "500 18px 'Gotham Rnd SSm'";
+    ctx.font = isBg ? "600 18px 'Gotham Rnd SSm'" : "500 18px 'Gotham Rnd SSm'";
     setTextShadow(ctx);
     ctx.fillText(text, x + (emoji ? 36 : 0), y);
     resetTextShadow(ctx);
