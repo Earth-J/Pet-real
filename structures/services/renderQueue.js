@@ -8,7 +8,12 @@ class RenderQueueClient {
     this.timeoutMs = options.timeoutMs || 30000;
     this.apiKey = options.apiKey || undefined;
   }
-
+ async healthCheck() {
+    const url = `${this.baseUrl}/health`;
+    const headers = this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : undefined;
+    return await getJson(url, headers);
+  }
+  
   async enqueue(jobPayload) {
     const url = `${this.baseUrl}/jobs`;
     const headers = this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : undefined;
