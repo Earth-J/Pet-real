@@ -4,12 +4,36 @@ const { GlobalFonts } = require("@napi-rs/canvas");
 const path = require("path");
 const GProfile = require("../../settings/models/profile.js");
 
-// ลงทะเบียนฟอนต์ Gotham Rounded SSm Light
-try {
-    GlobalFonts.registerFromPath(path.resolve("./assests/fonts/gothamrndssm_light.otf"), "Gotham Rnd SSm");
-} catch (_) {
-    // ignore if not found; will fallback to platform fonts
+// ลงทะเบียนฟอนต์ Gotham Rounded SSm Light จาก CDN พร้อม fallback เป็นไฟล์ภายในโปรเจกต์
+const DEFAULT_FONT_FAMILY = "Gotham Rnd SSm";
+const REMOTE_FONT_URL = "https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/gothamrndssm_light.otf"; // แก้ URL นี้ให้ตรงกับไฟล์ฟอนต์จริง
+
+async function registerRemoteFont() {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 2500);
+    try {
+        const res = await fetch(REMOTE_FONT_URL, { signal: controller.signal });
+        if (!res.ok) throw new Error(`font http ${res.status}`);
+        const buf = Buffer.from(await res.arrayBuffer());
+        GlobalFonts.registerFromBuffer(buf, DEFAULT_FONT_FAMILY);
+        return true;
+    } catch (_) {
+        return false; // จะไปใช้ fallback ด้านล่าง
+    } finally {
+        clearTimeout(id);
+    }
 }
+
+(async () => {
+    const ok = await registerRemoteFont();
+    if (!ok) {
+        try {
+            GlobalFonts.registerFromPath(path.resolve("./assests/fonts/gothamrndssm_light.otf"), DEFAULT_FONT_FAMILY);
+        } catch (_) {
+            // ignore if not found; will fallback to platform fonts
+        }
+    }
+})();
 
 // เพิ่ม: ค่าคงที่และแคชสำหรับเร่งความเร็วภายใต้โหลดสูง
 const CARD_WIDTH = 600;
