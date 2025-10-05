@@ -27,7 +27,7 @@ function buildInfoEmbed(description, color = '#e8f093', title) {
 
 // ลงทะเบียนฟอนต์สำหรับการ์ด (รองรับไทย) จาก CDN พร้อม fallback เป็นไฟล์ภายในโปรเจกต์
 let THAI_FONT_READY = false;
-const STATUS_FONT_FAMILY = process.env.PET_STATUS_FONT_FAMILY || 'Gotham Rnd SSm';
+const STATUS_FONT_FAMILY = process.env.PET_STATUS_FONT_FAMILY || 'sans-serif';
 const REMOTE_FONT_URL = 'https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/gothamrndssm_light.otf';
 async function registerRemoteThaiFont() {
   const controller = new AbortController();
@@ -305,7 +305,7 @@ function drawCenterStatus(ctx, text) {
   // ใช้ฟอนต์ไทย ถ้าลงทะเบียนได้ สำรองเป็น sans-serif
   const fontFamily = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
   const fontSize = parseInt(process.env.PET_STATUS_FONT_SIZE || '12');
-  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
+  ctx.font = `bold ${fontSize}px 'sans-serif'`;
   // เงาบางๆ ให้ตัวอักษรอ่านง่าย
   ctx.fillStyle = '#FFFFFF';
   ctx.fillText(text, centerX, statusY + 1);
@@ -342,10 +342,10 @@ function drawStatusBars(ctx, pet) {
   ctx.fillStyle = "#eeb32e";
   ctx.fillRect(92, 20, expbar, 14);
   const fontFamilySafe = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
-  ctx.font = `bold 12px 'Gotham Rnd SSm'`;
+  ctx.font = `bold 12px 'sans-serif'`;
   ctx.fillStyle = "#ffffff";
   ctx.fillText(`LV: ${pet.level}`, 92, 30);
-  ctx.font = `bold 12px 'Gotham Rnd SSm'`;
+  ctx.font = `bold 12px 'sans-serif'`;
   ctx.fillStyle = "#ffffff";
   ctx.fillText(`XP: ${expbar2 || "0"}%`, 190, 30);
 
@@ -536,7 +536,7 @@ async function makeNameTagDataUrl(text) {
   // วัดความกว้างข้อความ
   let c = Canvas.createCanvas(1, 1);
   let ctx = c.getContext('2d');
-  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
+  ctx.font = `bold ${fontSize}px 'sans-serif'`;
   const metrics = ctx.measureText(String(text || ''));
   const textW = Math.ceil(metrics.width);
   const textH = Math.ceil(fontSize + 2);
@@ -564,7 +564,7 @@ async function makeNameTagDataUrl(text) {
   ctx.fill();
   ctx.restore();
   // ข้อความสีขาว + เงาดำบางๆ
-  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
+  ctx.font = `bold ${fontSize}px 'sans-serif'`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#FFFFFF';
