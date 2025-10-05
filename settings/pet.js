@@ -2,7 +2,7 @@ module.exports = {
     pet: [ // pet list to sell not picture to create more pet
         {
             type: "dog",
-            name: "Dog",
+            name: "หมา",
             price: 1000,
             level: 1,
             exp: 0,
@@ -20,7 +20,7 @@ module.exports = {
         },
         {
             type: "cat",
-            name: "Cat",
+            name: "เเมว",
             price: 1000,
             level: 1,
             exp: 0,
