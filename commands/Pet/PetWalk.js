@@ -12,7 +12,7 @@ const { petSleepSystem } = require("../../handlers/PetSleepSystem");
 
 // Cooldown system
 const walkCooldowns = new Map();
-const WALK_COOLDOWN = 7 * 60 * 1000; // 7 minutes cooldown
+const WALK_COOLDOWN = 2 * 60 * 1000; // 2 minutes cooldown
 
 const PET_ASSET_BASE_URL = (process.env.PET_ASSET_BASE_URL || 'https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main').replace(/\/$/, '');
 const PET_ASSET_PATH_PREFIX = (process.env.PET_ASSET_PATH_PREFIX || '').replace(/^\/+|\/+$/g, '');
@@ -55,7 +55,7 @@ function checkCooldown(userId) {
 
 module.exports = {
   name: ["สัตว์เลี้ยง", "เดินเล่น"],
-  description: "พาสัตว์เลี้ยงของคุณเดินเล่น",
+  description: "พาสัตว์เลี้ยงเดินเล่น (คูลดาวน์ 2 นาที)",
   category: "Pet",
   run: async (client, interaction) => {
     await interaction.deferReply({ ephemeral: false });
@@ -68,7 +68,13 @@ module.exports = {
 
     await withUserLock(interaction.guild.id, interaction.user.id, async () => {
       const pet = await GPet.findOne({ guild: interaction.guild.id, user: interaction.user.id }).lean();
-      if (!pet) return interaction.editReply("คุณยังไม่มีสัตว์เลี้ยง พิมพ์ ` /รับสัตว์เลี้ยง ` เพื่อรับสัตว์เริ่มต้น !");
+      if (!pet) {
+        const embedNoPet = new EmbedBuilder()
+          .setTitle('ไม่พบสัตว์เลี้ยง')
+          .setDescription('คุณยังไม่มีสัตว์เลี้ยง พิมพ์ `/รับสัตว์เลี้ยง` เพื่อรับสัตว์เริ่มต้น!')
+          .setColor('#ff6961');
+        return interaction.editReply({ embeds: [embedNoPet] });
+      }
 
       const clamp = (n, lo = 0, hi = 20) => Math.max(lo, Math.min(hi, Number(n || 0)));
       const fmtDelta = (label, before, after, max = 20) => {
@@ -85,21 +91,40 @@ module.exports = {
         dirtiness: Number(pet.dirtiness ?? (20 - Number(pet.cleanliness ?? 20)))
       };
 
-      // Guards removed - allow all actions regardless of pet condition
-
       // ตรวจสอบว่าสัตว์กำลังนอนอยู่หรือไม่
       if (petSleepSystem.isPetSleeping(pet._id)) {
         const remainingMinutes = petSleepSystem.getRemainingSleepTime(pet._id);
-        return interaction.editReply({ 
-          content: `😴 สัตว์เลี้ยงกำลังนอนอยู่ ต้องรออีก **${remainingMinutes} นาที** ก่อนจะตื่น` 
-        });
+        const embedWarn = new EmbedBuilder()
+          .setTitle('กำลังนอนอยู่')
+          .setDescription(`😴 สัตว์เลี้ยงกำลังนอนอยู่ ต้องรออีก **${remainingMinutes} นาที** ก่อนจะตื่น`)
+          .setColor('#ff6961');
+        return interaction.editReply({ embeds: [embedWarn] });
       }
 
-      // ใช้ระบบพฤติกรรมสัตว์เลี้ยงใหม่ (ใช้ play action สำหรับการเดิน)
-      const result = await petBehaviorSystem.processPlayerAction(pet._id, 'play');
+      // ตรวจสอบความเหนื่อยล้า
+      if (before.fatigue >= 20) {
+        const embedFat = new EmbedBuilder()
+          .setTitle('เหนื่อยล้าเกินไป')
+          .setDescription(`😴 **${pet.name} เหนื่อยล้ามากเกินไป!**\nสัตว์เลี้ยงต้องนอนพักผ่อนก่อน ใช้คำสั่ง \`/สัตว์เลี้ยง เข้านอน\``)
+          .setColor('#ff6961');
+        return interaction.editReply({ embeds: [embedFat] });
+      }
+
+      // เตือนถ้าเหนื่อยมาก (แต่ยังทำได้)
+      let fatigueWarning = '';
+      if (before.fatigue >= 15 && before.fatigue < 20) {
+        fatigueWarning = '\n⚠️ **คำเตือน:** สัตว์เลี้ยงเริ่มเหนื่อยล้ามาก ควรให้นอนพักผ่อนเร็วๆ นี้!';
+      }
+
+      // ใช้ระบบพฤติกรรมสัตว์เลี้ยงใหม่ (ใช้ walk action)
+      const result = await petBehaviorSystem.processPlayerAction(pet._id, 'walk');
       
       if (!result.success) {
-        return interaction.editReply({ content: `เกิดข้อผิดพลาด: ${result.error}` });
+        const embedErr = new EmbedBuilder()
+          .setTitle('เกิดข้อผิดพลาด')
+          .setDescription(`รายละเอียด: ${result.error || 'ไม่ทราบสาเหตุ'}`)
+          .setColor('#ff6961');
+        return interaction.editReply({ embeds: [embedErr] });
       }
 
       // อัปเดต cooldown
@@ -108,129 +133,53 @@ module.exports = {
       // อัปเดต fire streak
       await updateFireStreak(interaction.guild.id, interaction.user.id);
 
-      // ดึงข้อมูลสัตว์เลี้ยงที่อัปเดตแล้ว
-      const updated = await GPet.findById(pet._id);
-
-      let leveledUp = false;
-      let exp = Number(updated.exp || 0);
-      let level = Number(updated.level || 1);
-      let nextexp = Number(updated.nextexp || Math.floor(level * level * 1.5));
-      if (exp >= nextexp) {
-        const diff = exp - nextexp;
-        level += 1;
-        nextexp = Math.floor(level * level * 1.5);
-        await GPet.updateOne({ guild: interaction.guild.id, user: interaction.user.id }, { $set: { level, nextexp, exp: diff } });
-        exp = diff;
-        leveledUp = true;
-      }
-
-      const state = getEmotionKey(updated);
-      const poseKey = getPoseKey(updated);
-      const thumbAtt = await makePetThumbAttachment(updated, state, poseKey);
-
-      // คำนวณสถานะปัจจุบัน
-      const emotion = getEmotionKey(updated);
-      const pose = getPoseKey(updated);
-      const health = calculateHealth(updated);
-      const healthStatus = getHealthStatus(health);
-      const careRecommendations = getCareRecommendations(updated);
-
       // สร้าง embed
       const embed = new EmbedBuilder()
-        .setTitle(`🚶‍♂️ พาเดินเล่น ${pet.name}`)
-        .setColor('#00ff00')
-        .setThumbnail(interaction.user.avatarURL())
-        .setTimestamp();
+        .setAuthor({ name: `พา ${pet.name} เดินเล่น`, iconURL: "https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/icon-sleep.png" })
+        .setColor('#e8f093')
+        .setThumbnail('https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/thumbnail/walk.png')
 
       // แสดงปฏิกิริยาของสัตว์เลี้ยง
       if (result.reactions && result.reactions.length > 0) {
         embed.addFields({
           name: "💬 ปฏิกิริยาของสัตว์เลี้ยง",
-          value: result.reactions.join('\n'),
+          value: result.reactions.join('\n') + fatigueWarning,
           inline: false
         });
       }
 
-      // แสดงการเปลี่ยนแปลงของค่า
+      // แสดงการเปลี่ยนแปลงของค่า (ตามรูปแบบที่ร้องขอ)
       const newStats = result.stats;
-      let changesText = '';
+      const fmt = (n) => (Number.isInteger(n) ? `${n}` : `${Number(n).toFixed(1)}`);
+      const sign = (d) => (d > 0 ? `+${fmt(d)}` : `${fmt(d)}`);
+      const lines = [];
+      // ความล้า
       if (before.fatigue !== newStats.fatigue) {
-        const change = newStats.fatigue - before.fatigue;
-        changesText += `**ความล้า:** ${before.fatigue} → ${newStats.fatigue} (${change > 0 ? '+' : ''}${change})\n`;
+        const d = newStats.fatigue - before.fatigue;
+        lines.push(`<:fatigue:1424394380604870727> **ความล้า:** ${fmt(newStats.fatigue)}/20 (${sign(d)})`);
       }
+      // ความเอ็นดู
       if (before.affection !== newStats.affection) {
-        const change = newStats.affection - before.affection;
-        changesText += `**ความเอ็นดู:** ${before.affection} → ${newStats.affection} (${change > 0 ? '+' : ''}${change})\n`;
+        const d = newStats.affection - before.affection;
+        lines.push(`<:love:1424394386497601687> **ความเอ็นดู:** ${fmt(newStats.affection)}/20 (${sign(d)})`);
       }
+      // ความอิ่ม
       if (before.fullness !== newStats.fullness) {
-        const change = newStats.fullness - before.fullness;
-        changesText += `**ความอิ่ม:** ${before.fullness} → ${newStats.fullness} (${change > 0 ? '+' : ''}${change})\n`;
+        const d = newStats.fullness - before.fullness;
+        lines.push(`<:Fullness:1424394383855452200> **ความอิ่ม:** ${fmt(newStats.fullness)}/20 (${sign(d)})`);
       }
-      if (before.dirtiness !== newStats.dirtiness) {
-        const change = newStats.dirtiness - before.dirtiness;
-        changesText += `**ความสกปรก:** ${before.dirtiness} → ${newStats.dirtiness} (${change > 0 ? '+' : ''}${change})\n`;
-      }
+      // สกปรก (ถ้าต้องการแสดงด้วย uncomment บรรทัดด้านล่าง)
+      // if (before.dirtiness !== newStats.dirtiness) {
+      //   const d = newStats.dirtiness - before.dirtiness;
+      //   lines.push(`<:dirt:ID> **ความสกปรก:** ${fmt(newStats.dirtiness)}/20 (${sign(d)})`);
+      // }
 
-      if (changesText) {
-        embed.addFields({
-          name: "📊 การเปลี่ยนแปลงของค่า",
-          value: changesText,
-          inline: false
-        });
-      }
+      // EXP
+      lines.push(`<:exp:1424394377555607592> **EXP :** ${result.exp}/${result.nextexp} (+${fmt(result.expGain)})${result.leveledUp ? `\n**เลเวลอัป!** → เลเวล ${result.level} 🎉` : ''}`);
 
-      // แสดงสถานะปัจจุบัน
-      const emotionEmoji = getEmotionEmoji(emotion);
-      embed.addFields(
-        {
-          name: "💖 ค่าปัจจุบัน",
-          value: `**ความเอ็นดู:** ${newStats.affection}/20\n**ความอิ่ม:** ${newStats.fullness}/20\n**ความล้า:** ${newStats.fatigue}/20\n**ความสกปรก:** ${newStats.dirtiness}/20`,
-          inline: true
-        },
-        {
-          name: "🎭 สถานะปัจจุบัน",
-          value: `${emotionEmoji} **อีโมต:** ${getEmotionDescription(emotion)}\n🎭 **ท่าทาง:** ${getPoseDescription(pose)}\n🏥 **สุขภาพ:** ${health}/20 (${getHealthDescription(healthStatus)})`,
-          inline: true
-        }
-      );
-
-      // แสดงคำแนะนำต่อไป
-      if (careRecommendations.length > 0) {
-        const urgentRecs = careRecommendations.filter(rec => rec.priority === 'urgent');
-        const highRecs = careRecommendations.filter(rec => rec.priority === 'high');
-
-        if (urgentRecs.length > 0 || highRecs.length > 0) {
-          let nextStepsText = '';
-          
-          if (urgentRecs.length > 0) {
-            nextStepsText += '🚨 **ควรทำทันที:**\n';
-            urgentRecs.forEach(rec => {
-              nextStepsText += `${rec.emoji} ${rec.message}\n`;
-            });
-            nextStepsText += '\n';
-          }
-
-          if (highRecs.length > 0) {
-            nextStepsText += '⚠️ **ควรทำเร็วๆ นี้:**\n';
-            highRecs.forEach(rec => {
-              nextStepsText += `${rec.emoji} ${rec.message}\n`;
-            });
-          }
-
-          if (nextStepsText) {
-            embed.addFields({
-              name: "📋 ขั้นตอนต่อไป",
-              value: nextStepsText,
-              inline: false
-            });
-          }
-        }
-      }
-
-      // แสดงข้อมูล EXP และ Level
       embed.addFields({
-        name: "📈 ประสบการณ์",
-        value: `**EXP:** ${exp}/${nextexp} (+1)\n${leveledUp ? `**เลเวลอัป!** → เลเวล ${level}` : ''}`,
+        name: "ค่าสถานะ",
+        value: lines.join('\n'),
         inline: false
       });
 
@@ -239,13 +188,7 @@ module.exports = {
         text: `การพาเดินเล่นเสร็จสิ้น • ${pet.name} รู้สึกดีขึ้น!` 
       });
 
-      const files = [];
-      if (thumbAtt) { 
-        files.push(thumbAtt); 
-        embed.setThumbnail('attachment://pet_thumb.gif'); 
-      }
-
-      await interaction.editReply({ embeds: [embed], files });
+      await interaction.editReply({ embeds: [embed] });
     });
   }
 };

@@ -29,14 +29,22 @@ module.exports = {
         // ตรวจสอบ cooldown
         const cooldownRemaining = checkCooldown(interaction.user.id);
         if (cooldownRemaining > 0) {
-            return interaction.editReply(`⏰ คุณต้องรอ **${cooldownRemaining} วินาที** ก่อนที่จะเปิด inventory ได้อีกครั้ง`);
+            const cooldownEmbed = new EmbedBuilder()
+                .setColor(client.color)
+                .setTitle("⏰ กรุณารอสักครู่")
+                .setDescription(`คุณต้องรอ **${cooldownRemaining} วินาที** ก่อนที่จะเปิด inventory ได้อีกครั้ง`);
+            return interaction.editReply({ embeds: [cooldownEmbed] });
         }
 
         const inv = await GInv.findOne({ guild: interaction.guild.id, user: interaction.user.id });
         const profile = await GProfile.findOne({ guild: interaction.guild.id, user: interaction.user.id });
 
         if (!inv || !Array.isArray(inv.item)) {
-            return interaction.editReply({ content: "ยังไม่มีไอเทมในกระเป๋า" });
+            const emptyEmbed = new EmbedBuilder()
+                .setColor(client.color)
+                .setTitle("🎒 กระเป๋าว่างเปล่า")
+                .setDescription("ยังไม่มีไอเทมในกระเป๋า");
+            return interaction.editReply({ embeds: [emptyEmbed] });
         }
 
         // สรุปรายการแบบรวมของซ้ำ พร้อมนับจำนวนต่อประเภท
@@ -104,7 +112,11 @@ module.exports = {
         const nonOwnerCollector = msg.createMessageComponentCollector({ filter: (x) => x.user.id !== interaction.user.id, time: 300000 });
         nonOwnerCollector.on('collect', async (menu) => { 
             try { 
-                await menu.reply({ content: "เมนูนี้สำหรับผู้ที่เรียกคำสั่งเท่านั้น", ephemeral: true }); 
+                const notOwnerEmbed = new EmbedBuilder()
+                    .setColor(client.color)
+                    .setTitle("🚫 ไม่สามารถใช้งานได้")
+                    .setDescription("เมนูนี้สำหรับผู้ที่เรียกคำสั่งเท่านั้น");
+                await menu.reply({ embeds: [notOwnerEmbed], ephemeral: true }); 
             } catch {} 
         });
 
@@ -139,7 +151,7 @@ module.exports = {
                 const embed = new EmbedBuilder()
                     .setAuthor({ name: `${interaction.user.username}'s Inventory • ถุงขยะ`, iconURL: interaction.user.displayAvatarURL() })
                     .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/garbage.png")
-                    .setDescription(`พื้นที่กระเป๋า: (${totalBackpack})\n\n🟢 = ว่าง | 🔴 = เต็ม`)
+                    .setDescription(`พื้นที่กระเป๋า: (${totalBackpack})`)
                     .addFields(
                         { name: "🗑️ ถุงขยะ", value: `${sCleaning.join("\n") || "ไม่มีอะไรเลย !"}`, inline: false },
                     )

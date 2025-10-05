@@ -20,9 +20,10 @@ function initPetDirtinessSystem() {
 // อัปเดตความสกปรกของ pet ทั้งหมด
 async function updateAllPetsDirtiness() {
     try {
-        // หา pet ทั้งหมดที่มีความสกปรกน้อยกว่า 20
+        // หา pet ทั้งหมดที่มีความสกปรกน้อยกว่า 20 และไม่ได้นอนอยู่
         const pets = await GPet.find({ 
-            dirtiness: { $lt: 20 } 
+            dirtiness: { $lt: 20 },
+            isSleeping: { $ne: true } // ไม่เพิ่มความสกปรกถ้าสัตว์เลี้ยงกำลังนอน
         });
         
         // หา pet ทั้งหมดในฐานข้อมูลเพื่อ debug
@@ -43,17 +44,15 @@ async function updateAllPetsDirtiness() {
         let updatedCount = 0;
         
         for (const pet of pets) {
-            // เพิ่มความสกปรก 2 หน่วย
-            const newDirtiness = Math.min(20, pet.dirtiness + 2);
-            const newCleanliness = 20 - newDirtiness;
+            // เพิ่มความสกปรก 1 หน่วย (ลดจาก 2 เพื่อความสมจริง)
+            const newDirtiness = Math.min(20, pet.dirtiness + 1);
             
-            // อัปเดตในฐานข้อมูล
+            // อัปเดตในฐานข้อมูล (ลบการอัปเดต cleanliness เพราะไม่ได้ใช้แล้ว)
             await GPet.updateOne(
                 { _id: pet._id },
                 { 
                     $set: { 
-                        dirtiness: newDirtiness,
-                        cleanliness: newCleanliness
+                        dirtiness: newDirtiness
                     }
                 }
             );
@@ -71,7 +70,7 @@ async function updateAllPetsDirtiness() {
 }
 
 // อัปเดตความสกปรกของ pet เฉพาะ
-async function updatePetDirtiness(petId, amount = 2) {
+async function updatePetDirtiness(petId, amount = 1) {
     try {
         const pet = await GPet.findById(petId);
         
@@ -81,14 +80,12 @@ async function updatePetDirtiness(petId, amount = 2) {
         }
         
         const newDirtiness = Math.min(20, pet.dirtiness + amount);
-        const newCleanliness = 20 - newDirtiness;
         
         await GPet.updateOne(
             { _id: petId },
             { 
                 $set: { 
-                    dirtiness: newDirtiness,
-                    cleanliness: newCleanliness
+                    dirtiness: newDirtiness
                 }
             }
         );
@@ -97,9 +94,7 @@ async function updatePetDirtiness(petId, amount = 2) {
         
         return {
             oldDirtiness: pet.dirtiness,
-            newDirtiness: newDirtiness,
-            oldCleanliness: pet.cleanliness,
-            newCleanliness: newCleanliness
+            newDirtiness: newDirtiness
         };
         
     } catch (error) {

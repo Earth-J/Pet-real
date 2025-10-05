@@ -1,7 +1,10 @@
 const locks = new Map();
 
 function keyOf(guildId, userId) {
-  return `${guildId}:${userId}`;
+  // ใช้คีย์เสถียรต่อผู้ใช้ต่อกิลด์เพื่อป้องกันข้ามคิวกัน
+  const g = guildId ?? "unknown-guild";
+  const u = userId ?? "unknown-user";
+  return `${g}:${u}`;
 }
 
 async function withUserLock(guildId, userId, fn) {
@@ -22,4 +25,4 @@ async function withUserLock(guildId, userId, fn) {
   }
 }
 
-module.exports = { withUserLock }; 
+module.exports = { withUserLock };

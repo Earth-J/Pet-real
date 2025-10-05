@@ -12,7 +12,7 @@ module.exports = {
           const action = interaction.customId.startsWith('sleep_confirm_') ? 'confirm' : 'cancel';
           
           // Import PetSleep command
-          const PetSleepCommand = require('../commands/Pet/PetSleep');
+          const PetSleepCommand = require('../../commands/Pet/PetSleep');
           
           // เรียกใช้ฟังก์ชันประมวลผลการยืนยัน
           await PetSleepCommand.processSleepConfirmation(interaction, petId, action);
@@ -43,4 +43,5 @@ module.exports = {
     }
   },
 };
+
 

@@ -12,7 +12,7 @@ const { petSleepSystem } = require("../../handlers/PetSleepSystem");
 
 // Cooldown system
 const trainCooldowns = new Map();
-const TRAIN_COOLDOWN = 10 * 60 * 1000; // 10 minutes cooldown
+const TRAIN_COOLDOWN = 2 * 60 * 1000; // 2 minutes cooldown
 
 const PET_ASSET_BASE_URL = (process.env.PET_ASSET_BASE_URL || 'https://cdn.kitsxkorn.xyz').replace(/\/$/, '');
 const PET_ASSET_PATH_PREFIX = (process.env.PET_ASSET_PATH_PREFIX || '').replace(/^\/+|\/+$/g, '');
@@ -38,11 +38,11 @@ async function makePetThumbAttachment(petDoc, state, poseKey) {
 
 module.exports = {
   name: ["สัตว์เลี้ยง", "เข้านอน"],
-  description: "ให้นอนสัตว์เลี้ยง (ต้องรอ 15-20 นาที)",
+  description: "พาสัตว์เลี้ยงเข้านอน (ต้องรอ 5-10 นาที)",
   category: "Pet",
 
-  async run(interaction) {
-    await withUserLock(interaction.user.id, async () => {
+  async run(client, interaction) {
+    await withUserLock(interaction.guild.id, interaction.user.id, async () => {
       try {
         await interaction.deferReply();
 
@@ -52,18 +52,22 @@ module.exports = {
         });
 
         if (!pet) {
-          return interaction.editReply({ 
-            content: "คุณยังไม่มีสัตว์เลี้ยง" 
-          });
+          const embed = new EmbedBuilder()
+            .setTitle('ไม่พบสัตว์เลี้ยง')
+            .setDescription('คุณยังไม่มีสัตว์เลี้ยง กรุณาสร้างสัตว์เลี้ยงก่อนใช้งานคำสั่งนี้')
+            .setColor('#ff6961');
+          return interaction.editReply({ embeds: [embed] });
         }
 
         // ตรวจสอบ cooldown
         const cooldownTime = trainCooldowns.get(interaction.user.id);
         if (cooldownTime && Date.now() - cooldownTime < TRAIN_COOLDOWN) {
           const remainingTime = Math.ceil((TRAIN_COOLDOWN - (Date.now() - cooldownTime)) / 1000);
-          return interaction.editReply({ 
-            content: `⏰ คุณต้องรออีก **${remainingTime} วินาที** ก่อนจะให้นอนสัตว์เลี้ยงได้อีกครั้ง` 
-          });
+          const embed = new EmbedBuilder()
+            .setTitle('อยู่ในช่วงคูลดาวน์')
+            .setDescription(`⏰ คุณต้องรออีก **${remainingTime} วินาที** ก่อนจะให้นอนสัตว์เลี้ยงได้อีกครั้ง`)
+            .setColor('#ff6961');
+          return interaction.editReply({ embeds: [embed] });
         }
 
         // เก็บสถานะก่อนนอน
@@ -79,9 +83,11 @@ module.exports = {
         // ตรวจสอบว่าสัตว์กำลังนอนอยู่หรือไม่
         if (petSleepSystem.isPetSleeping(pet._id)) {
           const remainingMinutes = petSleepSystem.getRemainingSleepTime(pet._id);
-          return interaction.editReply({ 
-            content: `😴 สัตว์เลี้ยงกำลังนอนอยู่ ต้องรออีก **${remainingMinutes} นาที** ก่อนจะตื่น` 
-          });
+          const embed = new EmbedBuilder()
+            .setTitle('กำลังนอนอยู่')
+            .setDescription(`😴 สัตว์เลี้ยงกำลังนอนอยู่ ต้องรออีก **${remainingMinutes} นาที** ก่อนจะตื่น`)
+            .setColor('#ff6961');
+          return interaction.editReply({ embeds: [embed] });
         }
 
         // แสดงหน้าจอยืนยันการนอน
@@ -89,9 +95,11 @@ module.exports = {
 
       } catch (error) {
         console.error('Error in PetSleep:', error);
-        await interaction.editReply({ 
-          content: "เกิดข้อผิดพลาดในการให้นอนสัตว์เลี้ยง กรุณาลองใหม่อีกครั้ง" 
-        });
+        const embed = new EmbedBuilder()
+          .setTitle('เกิดข้อผิดพลาด')
+          .setDescription('เกิดข้อผิดพลาดในการให้นอนสัตว์เลี้ยง กรุณาลองใหม่อีกครั้ง')
+          .setColor('#ff6961');
+        await interaction.editReply({ embeds: [embed] });
       }
     });
   },
@@ -103,42 +111,29 @@ module.exports = {
     try {
       // สร้าง embed สำหรับยืนยัน
       const confirmEmbed = new EmbedBuilder()
-        .setTitle(`💤 ยืนยันการให้นอน ${pet.name}`)
-        .setDescription(`คุณแน่ใจหรือไม่ที่จะให้นอน ${pet.name}?`)
-        .setColor('#ffa500')
-        .setThumbnail(interaction.user.avatarURL())
-        .setTimestamp();
+         .setAuthor({ name: `เเน่ใจที่จะให้ ${pet.name} นอนมั้ย?`, iconURL: "https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/icon-sleep.png" })
+        .setColor('#c9ce93')
+        .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/bed.png")
 
       // แสดงข้อมูลการนอน
       confirmEmbed.addFields({
-        name: "😴 ข้อมูลการนอน",
-        value: `**เวลานอน:** 15-20 นาที (สุ่ม)\n**สถานะ:** จะไม่สามารถทำกิจกรรมอื่นได้\n**แจ้งเตือน:** จะได้รับ DM เมื่อตื่น`,
+        name: "ข้อมูลการนอน",
+        value: `**เวลานอน:** 5-10 นาที (สุ่ม)\n**สถานะ:** จะไม่สามารถทำกิจกรรมอื่นได้\n**แจ้งเตือน:** จะได้รับ DM เมื่อตื่น`,
         inline: false
       });
 
-      // แสดงสถานะปัจจุบัน
-      confirmEmbed.addFields({
-        name: "💖 สถานะปัจจุบัน",
-        value: `**ความเอ็นดู:** ${beforeStats.affection}/20\n**ความอิ่ม:** ${beforeStats.fullness}/20\n**ความล้า:** ${beforeStats.fatigue}/20\n**ความสกปรก:** ${beforeStats.dirtiness}/20`,
-        inline: true
-      });
-
-      confirmEmbed.addFields({
-        name: "⚠️ ข้อควรทราบ",
-        value: `• สัตว์เลี้ยงจะไม่สามารถทำกิจกรรมอื่นได้จนกว่าจะตื่น\n• ระหว่างนอน fatigue จะไม่เพิ่มขึ้น\n• จะได้รับแจ้งเตือนใน DM เมื่อตื่นแล้ว`,
-        inline: true
-      });
+      // แสดงเฉพาะข้อมูลการนอนตามที่ระบุ
 
       // สร้างปุ่มยืนยัน
       const row = new ActionRowBuilder()
         .addComponents(
           new ButtonBuilder()
             .setCustomId(`sleep_confirm_${pet._id}`)
-            .setLabel('💤 ให้นอน')
-            .setStyle(ButtonStyle.Success),
+            .setLabel('ให้นอน')
+            .setStyle(ButtonStyle.Secondary),
           new ButtonBuilder()
             .setCustomId(`sleep_cancel_${pet._id}`)
-            .setLabel('❌ ยกเลิก')
+            .setLabel('ยกเลิก')
             .setStyle(ButtonStyle.Danger)
         );
 
@@ -166,10 +161,9 @@ module.exports = {
     try {
       if (action === 'cancel') {
         const cancelEmbed = new EmbedBuilder()
-          .setTitle('❌ ยกเลิกการให้นอน')
-          .setDescription('การให้นอนถูกยกเลิกแล้ว')
+          .setTitle('❌ ยกเลิกการเข้านอน')
+          .setDescription('การเข้านอนถูกยกเลิกแล้ว')
           .setColor('#ff0000')
-          .setTimestamp();
 
         await interaction.update({ 
           embeds: [cancelEmbed], 
@@ -183,11 +177,11 @@ module.exports = {
         const sleepResult = await petSleepSystem.startSleep(petId);
         
         if (!sleepResult.success) {
-          await interaction.update({ 
-            content: sleepResult.message,
-            embeds: [],
-            components: []
-          });
+          const embed = new EmbedBuilder()
+            .setTitle('ไม่สามารถเริ่มการเข้านอนได้')
+            .setDescription(String(sleepResult.message || 'ไม่ทราบสาเหตุ'))
+            .setColor('#ff6961');
+          await interaction.update({ embeds: [embed], components: [] });
           return;
         }
 
@@ -200,70 +194,32 @@ module.exports = {
         // ดึงข้อมูลสัตว์เลี้ยงที่อัปเดตแล้ว
         const updated = await GPet.findById(petId);
 
-        // level up check
-        let leveledUp = false;
-        let exp = Number(updated.exp || 0);
+        // คำนวณ EXP ที่จะได้หลังตื่น (จำลอง)
+        const expAfterSleep = Number(updated.exp || 0) + 4; // Sleep ให้ EXP +4
         let level = Number(updated.level || 1);
         let nextexp = Number(updated.nextexp || Math.floor(level * level * 1.5));
-        if (exp >= nextexp) {
-          const diff = exp - nextexp;
-          level += 1;
-          nextexp = Math.floor(level * level * 1.5);
-          await GPet.updateOne(
-            { guild: interaction.guild.id, user: interaction.user.id },
-            { $set: { level, nextexp, exp: diff } }
-          );
-          leveledUp = true;
-        }
-
-        const state = getEmotionKey(updated);
-        const poseKey = getPoseKey(updated);
-        const thumbAtt = await makePetThumbAttachment(updated, state, poseKey);
-
-        // คำนวณสถานะปัจจุบัน
-        const emotion = getEmotionKey(updated);
-        const pose = getPoseKey(updated);
-        const health = calculateHealth(updated);
-        const healthStatus = getHealthStatus(health);
-        const careRecommendations = getCareRecommendations(updated);
+        let willLevelUp = expAfterSleep >= nextexp;
 
         // สร้าง embed
         const embed = new EmbedBuilder()
-          .setTitle(`💤 ให้นอน ${updated.name}`)
-          .setColor('#4a90e2')
-          .setThumbnail(interaction.user.avatarURL())
+        .setAuthor({ name: `${updated.name} กำลังนอน`, iconURL: "https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/icon-sleep.png" })
+        .setColor('#c9ce93')
+          .setThumbnail('https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/thumbnail/sleep.png')
           .setTimestamp();
 
         // แสดงข้อมูลการนอน
         embed.addFields({
-          name: "😴 ข้อมูลการนอน",
-          value: `**เวลานอน:** ${sleepResult.duration} นาที\n**เวลาตื่น:** <t:${Math.floor(sleepResult.wakeUpTime.getTime() / 1000)}:R>\n**สถานะ:** กำลังนอนหลับ`,
+          name: "ข้อมูลการนอน",
+          value: `**เวลานอน:** ${sleepResult.duration} นาที\n**เวลาตื่น:** <t:${Math.floor(sleepResult.wakeUpTime.getTime() / 1000)}:R>`,
           inline: false
         });
 
+        // แสดงค่าสถานะตามรูปแบบที่ต้องการ (แสดงค่าหลังตื่นแบบคาดการณ์)
+        const fatigueAfterSleep = 0;
+        const fatigueDelta = -Number(updated.fatigue || 0);
         embed.addFields({
-          name: "⚠️ ข้อควรทราบ",
-          value: `• สัตว์เลี้ยงจะไม่สามารถทำกิจกรรมอื่นได้จนกว่าจะตื่น\n• ระหว่างนอน fatigue จะไม่เพิ่มขึ้น\n• จะได้รับแจ้งเตือนใน DM เมื่อตื่นแล้ว`,
-          inline: false
-        });
-
-        // แสดงสถานะปัจจุบันก่อนนอน
-        embed.addFields({
-          name: "💖 สถานะก่อนนอน",
-          value: `**ความเอ็นดู:** ${updated.affection}/20\n**ความอิ่ม:** ${updated.fullness}/20\n**ความล้า:** ${updated.fatigue}/20\n**ความสกปรก:** ${updated.dirtiness}/20`,
-          inline: true
-        });
-
-        embed.addFields({
-          name: "🎭 อารมณ์ก่อนนอน",
-          value: `**อีโมต:** ${getEmotionDescription(emotion)}\n**ท่าทาง:** ${getPoseDescription(pose)}\n**สุขภาพ:** ${health}/20 (${getHealthDescription(healthStatus)})`,
-          inline: true
-        });
-
-        // แสดงข้อมูล EXP และ Level
-        embed.addFields({
-          name: "📈 ประสบการณ์",
-          value: `**EXP:** ${exp}/${nextexp} (+2)\n${leveledUp ? `**เลเวลอัป!** → เลเวล ${level}` : ''}`,
+          name: "ค่าสถานะ",
+          value: `<:fatigue:1424394380604870727> **ความล้า:** ${fatigueAfterSleep}/20 (${fatigueDelta})\n<:exp:1424394377555607592> **EXP :** ${updated.exp}/${nextexp} (+4)` + (willLevelUp ? `\n✨ **จะเลเวลอัปเมื่อตื่น!**` : ''),
           inline: false
         });
 
@@ -272,15 +228,8 @@ module.exports = {
           text: `สัตว์เลี้ยงเริ่มนอนแล้ว • จะตื่นในอีก ${sleepResult.duration} นาที` 
         });
 
-        const files = [];
-        if (thumbAtt) { 
-          files.push(thumbAtt); 
-          embed.setThumbnail('attachment://pet_thumb.gif'); 
-        }
-
         await interaction.update({ 
           embeds: [embed], 
-          files,
           components: []
         });
       }

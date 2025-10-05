@@ -3,7 +3,7 @@ const GPet = require("../settings/models/pet.js");
 const { petBehaviorSystem } = require('./PetBehaviorSystem');
 const { getEmotionKey, hasEmotionChanged, getEmotionDescription, getEmotionAdvice } = require('../structures/services/petEmotion');
 const { getPoseKey, hasPoseChanged, getPoseDescription, getPoseAdvice } = require('../structures/services/petPose');
-const { calculateHealth, getHealthStatus, getHealthDescription, getHealthAdvice, calculateStatInteractions, applyStatInteractions, needsUrgentCare, getCareRecommendations } = require('../structures/services/petHealthSystem');
+const { calculateHealth, getHealthStatus, getHealthDescription, getHealthAdvice, calculateStatInteractions, applyStatInteractions, needsUrgentCare, getCareRecommendations, STAT_RANGES } = require('../structures/services/petHealthSystem');
 
 /**
  * ระบบวัฏจักรเกม (Game Loop) สำหรับสัตว์เลี้ยง
@@ -34,8 +34,8 @@ class PetGameLoop {
 
         console.log('[PET_GAME_LOOP] Starting pet game loop system...');
         
-        // เริ่มระบบพฤติกรรมสัตว์เลี้ยง
-        petBehaviorSystem.start();
+        // ปิดการใช้งาน PetBehaviorSystem เพื่อไม่ให้ซ้ำซ้อนกับ PetGameLoop
+        // petBehaviorSystem.start(); // DISABLED: ใช้ PetGameLoop แทน
         
         // รันทุกๆ 1 นาที
         cron.schedule('* * * * *', async () => {
@@ -94,6 +94,12 @@ class PetGameLoop {
      */
     async processPetTick(pet) {
         try {
+            // ข้ามสัตว์เลี้ยงที่กำลังนอนอยู่ (PetSleepSystem จะจัดการให้)
+            if (pet.isSleeping) {
+                console.log(`[PET_GAME_LOOP] Pet ${pet._id} is sleeping, skipping tick processing`);
+                return;
+            }
+
             // 1. คำนวณค่าหลักปัจจุบัน
             const currentStats = {
                 fatigue: Number(pet.fatigue || 0),
@@ -102,32 +108,48 @@ class PetGameLoop {
                 dirtiness: Number(pet.dirtiness || 0)
             };
 
-            // 2. คำนวณความสัมพันธ์ระหว่างค่าสถานะ
+            // 2. เพิ่ม/ลดค่าอัตโนมัติตามเวลา (ทุก 1 นาที)
+            // ปิดการเพิ่มความล้าระหว่าง idle: ความล้าจะเปลี่ยนเฉพาะเมื่อมีกิจกรรม (เดิน/เล่น/ทำความสะอาด/กิน/นอน)
+            // currentStats.fatigue ไม่เปลี่ยนแปลงใน tick พื้นฐาน
+            
+            // Fullness: หิวขึ้นเรื่อยๆ -0.25/นาที = -15/ชั่วโมง = ประมาณ 80 นาทีจะหิวเต็ม (ลดจาก -0.3)
+            currentStats.fullness = Math.max(STAT_RANGES.MIN, currentStats.fullness - 0.25);
+            
+            // Affection: ลดลงถ้าไม่ได้ดูแลนานมาก (มากกว่า 1 ชั่วโมง)
+            const lastActionTime = pet.lastPlayerActionTime ? new Date(pet.lastPlayerActionTime).getTime() : 0;
+            const timeSinceLastAction = Date.now() - lastActionTime;
+            if (timeSinceLastAction > 3600000) { // 1 ชั่วโมง
+                currentStats.affection = Math.max(STAT_RANGES.MIN, currentStats.affection - 0.3); // ลดจาก -0.5
+            }
+
+            // 3. คำนวณความสัมพันธ์ระหว่างค่าสถานะ
             const interactions = calculateStatInteractions(pet);
             
-            // 3. ประมวลผลผลกระทบของความสัมพันธ์
-            const updatedStats = applyStatInteractions(currentStats, interactions);
+            // 4. ประมวลผลผลกระทบของความสัมพันธ์
+            // ปิดการเปลี่ยนแปลง fatigue จาก interaction ระหว่าง idle เพื่อให้ fatigue เปลี่ยนเฉพาะกิจกรรม
+            const tempStats = applyStatInteractions(currentStats, interactions);
+            const updatedStats = { ...tempStats, fatigue: currentStats.fatigue };
 
-            // 4. คำนวณอารมณ์และท่าทางใหม่
+            // 5. คำนวณอารมณ์และท่าทางใหม่
             const newEmotion = getEmotionKey({ ...pet, ...updatedStats });
             const newPose = getPoseKey({ ...pet, ...updatedStats });
 
-            // 5. คำนวณสุขภาพรวม
+            // 6. คำนวณสุขภาพรวม
             const health = calculateHealth({ ...pet, ...updatedStats });
             const healthStatus = getHealthStatus(health);
 
-            // 6. ตรวจสอบความต้องการการดูแลเร่งด่วน
+            // 7. ตรวจสอบความต้องการการดูแลเร่งด่วน
             const needsUrgent = needsUrgentCare({ ...pet, ...updatedStats });
             if (needsUrgent) {
                 this.stats.urgentCarePets++;
             }
 
-            // 7. ตรวจสอบการเปลี่ยนแปลงที่สำคัญ
+            // 8. ตรวจสอบการเปลี่ยนแปลงที่สำคัญ
             const emotionChanged = hasEmotionChanged(pet.lastEmotion, newEmotion);
             const poseChanged = hasPoseChanged(pet.lastPose, newPose);
             const healthChanged = pet.lastHealth !== health;
 
-            // 8. สร้างปฏิกิริยาใหม่ (ถ้ามีการเปลี่ยนแปลงสำคัญ)
+            // 9. สร้างปฏิกิริยาใหม่ (ถ้ามีการเปลี่ยนแปลงสำคัญ)
             const reactions = [];
             if (emotionChanged) {
                 reactions.push(`อารมณ์เปลี่ยนเป็น: ${getEmotionDescription(newEmotion)}`);
@@ -139,13 +161,13 @@ class PetGameLoop {
                 reactions.push(`สุขภาพเปลี่ยนเป็น: ${getHealthDescription(healthStatus)}`);
             }
 
-            // 9. สร้างคำแนะนำการดูแล
+            // 10. สร้างคำแนะนำการดูแล
             const careRecommendations = getCareRecommendations({ ...pet, ...updatedStats });
 
-            // 10. อัปเดตฐานข้อมูล
+            // 11. อัปเดตฐานข้อมูล
             await this.updatePetInDatabase(pet, updatedStats, newEmotion, newPose, health, healthStatus, reactions, careRecommendations);
 
-            // 11. แสดงข้อมูลการเปลี่ยนแปลง (ถ้ามี)
+            // 12. แสดงข้อมูลการเปลี่ยนแปลง (ถ้ามี)
             if (emotionChanged || poseChanged || healthChanged || reactions.length > 0) {
                 console.log(`[PET_GAME_LOOP] Pet ${pet._id} changes:`, {
                     emotion: `${pet.lastEmotion || 'unknown'} → ${newEmotion}`,
@@ -313,7 +335,7 @@ class PetGameLoop {
      */
     stop() {
         if (this.isRunning) {
-            petBehaviorSystem.stop();
+            // petBehaviorSystem.stop(); // DISABLED: ไม่ได้ใช้งาน
             this.isRunning = false;
             console.log('[PET_GAME_LOOP] Pet game loop system stopped');
         }
@@ -327,4 +349,5 @@ module.exports = {
     PetGameLoop,
     petGameLoop
 };
+
 

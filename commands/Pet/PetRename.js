@@ -1,9 +1,11 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require("discord.js");
 const GPet = require("../../settings/models/pet.js");
+const GProfile = require("../../settings/models/profile.js");
 
 // Cooldown system
 const renameCooldowns = new Map();
 const RENAME_COOLDOWN = 5 * 60 * 1000; // 5 minutes cooldown
+const RENAME_COST = 500;
 
 // ตรวจสอบ cooldown
 function checkCooldown(userId) {
@@ -20,7 +22,7 @@ function checkCooldown(userId) {
 
 module.exports = {
   name: ["สัตว์เลี้ยง", "เปลี่ยนชื่อ"],
-  description: "Rename your pet. (5 minute cooldown)",
+  description: "เปลี่ยนชื่อสัตว์เลี้ยง (คูลดาวน์ 5 นาที, เสีย 500 บาท)",
   category: "Pet",
   run: async (client, interaction) => {
     // ตรวจสอบ cooldown
@@ -36,6 +38,12 @@ module.exports = {
     const pet = await GPet.findOne({ guild: interaction.guild.id, user: interaction.user.id });
     if (!pet) {
       return interaction.reply({ content: "คุณยังไม่มีสัตว์เลี้ยง", ephemeral: true });
+    }
+
+    // ต้องมีเงินพอ
+    const profile = await GProfile.findOne({ guild: interaction.guild.id, user: interaction.user.id });
+    if (!profile || (profile.money || 0) < RENAME_COST) {
+      return interaction.reply({ content: `ต้องใช้เงิน ${RENAME_COST} ในการเปลี่ยนชื่อ (เงินไม่พอ)`, ephemeral: true });
     }
 
     // เปิดโมดอลให้กรอกชื่อใหม่
@@ -62,8 +70,15 @@ module.exports = {
         return submitted.reply({ content: 'ชื่อเล่นต้องเป็นภาษาอังกฤษเท่านั้น และไม่เกิน 10 ตัวอักษร', ephemeral: true });
       }
 
+      // ตรวจเงินอีกรอบและหักเงินพร้อมบันทึกชื่อใหม่
+      const freshProfile = await GProfile.findOne({ guild: interaction.guild.id, user: interaction.user.id });
+      if (!freshProfile || (freshProfile.money || 0) < RENAME_COST) {
+        return submitted.reply({ content: `ต้องใช้เงิน ${RENAME_COST} ในการเปลี่ยนชื่อ (เงินไม่พอ)`, ephemeral: true });
+      }
+
       pet.name = nickname;
-      await pet.save();
+      freshProfile.money = (freshProfile.money || 0) - RENAME_COST;
+      await Promise.all([pet.save(), freshProfile.save()]);
 
       // อัปเดต cooldown
       renameCooldowns.set(interaction.user.id, Date.now());
@@ -71,7 +86,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setColor(client.color)
         .setTitle('เปลี่ยนชื่อสัตว์เลี้ยงสำเร็จ')
-        .setDescription(`ชื่อใหม่: **${nickname}**`);
+        .setDescription(`ชื่อใหม่: **${nickname}**\nหักเงิน: ${RENAME_COST}`);
 
       await submitted.reply({ embeds: [embed], ephemeral: true });
     } catch (_) {

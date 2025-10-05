@@ -37,6 +37,8 @@ initPetBehaviorSystem();
 // เริ่มระบบการนอนสัตว์เลี้ยง
 const { petSleepSystem } = require("./handlers/PetSleepSystem");
 petSleepSystem.setClient(client); // ส่ง client สำหรับส่ง DM
-petSleepSystem.start();
+petSleepSystem.start().catch(error => {
+    console.error('[MAIN] Error starting pet sleep system:', error);
+});
 
 client.login(client.token);

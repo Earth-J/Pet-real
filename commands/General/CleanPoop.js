@@ -153,7 +153,10 @@ module.exports = {
     // ตรวจสอบ cooldown
     const cooldownRemaining = checkCooldown(interaction.user.id);
     if (cooldownRemaining > 0) {
-        return interaction.editReply(`⏰ คุณต้องรอ **${cooldownRemaining} วินาที** ก่อนที่จะทำความสะอาดบ้านได้อีกครั้ง`);
+        const embed = new EmbedBuilder()
+          .setColor(client.color)
+          .setDescription(`⏰ คุณต้องรอ **${cooldownRemaining} วินาที** ก่อนที่จะทำความสะอาดบ้านได้อีกครั้ง`);
+        return interaction.editReply({ embeds: [embed] });
     }
 
     try {
@@ -164,7 +167,10 @@ module.exports = {
       }).lean();
 
       if (!home) {
-        return interaction.editReply("คุณยังไม่มีบ้าน! ใช้คำสั่ง ` /สัตว์เลี้ยง บ้าน ` เพื่อสร้างบ้านก่อน");
+        const embed = new EmbedBuilder()
+          .setColor(client.color)
+          .setDescription("🏠 คุณยังไม่มีบ้าน! ใช้คำสั่ง ` /สัตว์เลี้ยง บ้าน ` เพื่อสร้างบ้านก่อน");
+        return interaction.editReply({ embeds: [embed] });
       }
 
       // ตรวจสอบว่าผู้ใช้มี pet หรือไม่
@@ -174,7 +180,10 @@ module.exports = {
       }).lean();
 
       if (!pet) {
-        return interaction.editReply("คุณยังไม่มีสัตว์เลี้ยง! ใช้คำสั่ง ` /รับสัตว์เลี้ยง ` เพื่อรับสัตว์เลี้ยงก่อน");
+        const embed = new EmbedBuilder()
+          .setColor(client.color)
+          .setDescription("🐾 คุณยังไม่มีสัตว์เลี้ยง! ใช้คำสั่ง ` /รับสัตว์เลี้ยง ` เพื่อรับสัตว์เลี้ยงก่อน");
+        return interaction.editReply({ embeds: [embed] });
       }
 
       // ตรวจสอบว่าผู้ใช้มี inventory หรือไม่
@@ -184,21 +193,30 @@ module.exports = {
       });
 
       if (!inventory) {
-        return interaction.editReply("คุณยังไม่มี กระเป๋า ระบบมีปัญหา!");
+        const embed = new EmbedBuilder()
+          .setColor(client.color)
+          .setDescription("🎒 คุณยังไม่มีกระเป๋า หรือระบบมีปัญหา!");
+        return interaction.editReply({ embeds: [embed] });
       }
 
       // หา poop slots
       const poopSlots = findPoopSlots(home);
       
       if (poopSlots.length === 0) {
-        return interaction.editReply("บ้านของคุณสะอาดอยู่แล้ว! ไม่มีขี้ให้ทำความสะอาด");
+        const embed = new EmbedBuilder()
+          .setColor(client.color)
+          .setDescription("✨ บ้านของคุณสะอาดอยู่แล้ว! ไม่มีขี้ให้ทำความสะอาด");
+        return interaction.editReply({ embeds: [embed] });
       }
 
       // หาถุงขยะที่สามารถใช้ได้
       const trashBag = findAvailableTrashBag(inventory);
       
       if (!trashBag) {
-        return interaction.editReply("ถุงขยะของคุณหมด! ใช้คำสั่ง `/ร้านค้า` เพื่อซื้อถุงขยะ");
+        const embed = new EmbedBuilder()
+          .setColor(client.color)
+          .setDescription("🛍️ ถุงขยะของคุณหมด! ใช้คำสั่ง `/ร้านค้า` เพื่อซื้อถุงขยะ");
+        return interaction.editReply({ embeds: [embed] });
       }
 
       // ใช้ถุงขยะเก็บ poop
@@ -268,21 +286,18 @@ module.exports = {
         files.push(houseAttachment);
         
         const cleanEmbed = new EmbedBuilder()
-          .setAuthor({ name: `${interaction.user.username}'s Clean House`, iconURL: interaction.user.avatarURL() })
+          .setAuthor({ name: `${interaction.user.username}'s เก็บขี้สัตว์เลี้ยง`, iconURL: interaction.user.avatarURL() })
           .setColor(client.color)
-          .setDescription(`🧹 ทำความสะอาดบ้านเรียบร้อย! เก็บขี้ได้ ${collectedPoop} ก้อน${trashBagMessage}\n\n💡 **หมายเหตุ**: ใช้ \`/สัตว์เลี้ยง อาบน้ำ\` เพื่อทำความสะอาดสัตว์เลี้ยงโดยตรง`)
-          .addFields(
-            { name: "ความสะอาดของสัตว์เลี้ยง", value: `${newDirtiness}/20`, inline: true },
-            { name: "EXP ที่ได้รับ", value: `+${collectedPoop * 2}`, inline: true }
-          )
+          .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/clean-poop.png")
+          .setDescription(`🧹 ทำความสะอาดบ้านเรียบร้อย! เก็บขี้ได้ ${collectedPoop} ก้อน${trashBagMessage}\n<:exp:1424394377555607592> EXP : ${result.exp}/${result.nextexp} (+${collectedPoop})\n\n💡 **หมายเหตุ**: ใช้ \`/สัตว์เลี้ยง อาบน้ำ\` เพื่อทำความสะอาดสัตว์เลี้ยงโดยตรง`)
         
         embeds.push(cleanEmbed);
       }
 
-      // เพิ่ม EXP
+      // เพิ่ม EXP (ลดจาก x2 เป็น x1 เพื่อความสมดุล)
       await GPet.updateOne(
         { _id: pet._id },
-        { $inc: { exp: collectedPoop * 2 } }
+        { $inc: { exp: collectedPoop } }
       );
 
       await interaction.editReply({
@@ -291,7 +306,10 @@ module.exports = {
 
     } catch (error) {
       console.error('Error in cleanpoop command:', error);
-      await interaction.editReply("เกิดข้อผิดพลาดในการทำความสะอาดบ้าน กรุณาลองใหม่อีกครั้ง");
+      const embed = new EmbedBuilder()
+        .setColor(client.color)
+        .setDescription("⚠️ เกิดข้อผิดพลาดในการทำความสะอาดบ้าน กรุณาลองใหม่อีกครั้ง");
+      await interaction.editReply({ embeds: [embed] });
     }
   }
 };

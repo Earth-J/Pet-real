@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, AttachmentBuilder, SelectMenuOptionBuilder } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, AttachmentBuilder, StringSelectMenuOptionBuilder } = require("discord.js");
 const GInv = require("../../settings/models/inventory.js");
 const { petSelect } = require("../../structures/select/pet.js");
 const { updateFireStreak } = require("../../handlers/FireStreakHandler");
@@ -10,7 +10,7 @@ const { petSleepSystem } = require("../../handlers/PetSleepSystem");
 
 // Cooldown system
 const feedCooldowns = new Map();
-const FEED_COOLDOWN = 2 * 60 * 1000; // 2 minutes cooldown
+const FEED_COOLDOWN = 3 * 60 * 1000; // 3 minutes cooldown (ปรับจาก 2 นาที)
 
 // ตรวจสอบ cooldown
 function checkCooldown(userId) {
@@ -27,7 +27,7 @@ function checkCooldown(userId) {
 
 module.exports = {
     name: ["สัตว์เลี้ยง", "ให้อาหาร"],
-    description: "Feed your pet. (2 minute cooldown)",
+    description: "ให้อาหารสัตว์เลี้ยง (คูลดาวน์ 3 นาที)",
     category: "Pet",
     run: async (client, interaction) => {
         await interaction.deferReply({ ephemeral: false });
@@ -38,7 +38,11 @@ module.exports = {
             return interaction.editReply(`⏰ คุณต้องรอ **${cooldownRemaining} วินาที** ก่อนที่จะให้อาหารสัตว์เลี้ยงได้อีกครั้ง`);
         }
 
-        const msg = await interaction.editReply("Loading please wait...");
+        const loadingEmbed = new EmbedBuilder()
+            .setTitle('กำลังโหลด')
+            .setDescription('โปรดรอสักครู่...')
+            .setColor('#cccccc');
+        const msg = await interaction.editReply({ embeds: [loadingEmbed] });
 
         const inv = await GInv.findOne({ guild: interaction.guild.id, user: interaction.user.id });
 
@@ -46,7 +50,11 @@ module.exports = {
         const object = value.filter(x => x.type === "food");
         // if not have food return msg
         if(object.length === 0) {
-            return msg.edit({ content: "ไม่มีอาหารในกระเป๋า" });
+            const embedNoFood = new EmbedBuilder()
+                .setTitle('ไม่มีอาหารในกระเป๋า')
+                .setDescription('คุณยังไม่มีอาหารสำหรับสัตว์เลี้ยง ลองซื้อจากร้านค้าก่อน')
+                .setColor('#ff6961');
+            return msg.edit({ embeds: [embedNoFood] });
         }
 
         const embed = new EmbedBuilder()
@@ -61,8 +69,9 @@ module.exports = {
                     .setMaxValues(1)
                     .setMinValues(1)
                     .setOptions(object.map(key => {
-                        return new SelectMenuOptionBuilder()
+                        return new StringSelectMenuOptionBuilder()
                             .setLabel(`${toOppositeCase(key.name)}`)
+                            .setEmoji(getFoodEmoji(key))
                             .setValue(key.id)
                         }
                     ))
@@ -75,7 +84,10 @@ module.exports = {
         const nonOwnerCollector = msg.createMessageComponentCollector({ filter: (x) => x.user.id !== interaction.user.id, time: 300000 });
         nonOwnerCollector.on('collect', async (menu) => { 
             try { 
-                await menu.reply({ content: "เมนูนี้สำหรับผู้ที่เรียกคำสั่งเท่านั้น", ephemeral: true }); 
+                const embedOnlyOwner = new EmbedBuilder()
+                    .setTitle('เมนูนี้สำหรับผู้ที่เรียกคำสั่งเท่านั้น')
+                    .setColor('#ff6961');
+                await menu.reply({ embeds: [embedOnlyOwner], ephemeral: true }); 
             } catch {} 
         });
     
@@ -92,7 +104,7 @@ module.exports = {
                     feedCooldowns.set(interaction.user.id, Date.now());
     
                     // ใช้ระบบพฤติกรรมสัตว์เลี้ยงใหม่
-                    await processFeedAction(client, interaction, msg, item.id);
+                    await processFeedAction(client, interaction, msg, item.id, inv);
                     await collector.stop();
                 }
             }
@@ -115,58 +127,94 @@ function toOppositeCase(char) {
     return char.charAt(0).toUpperCase() + char.slice(1);
 }
 
+function getFoodEmoji(item) {
+    if (item && (item.emoji || item.icon)) return item.emoji || item.icon;
+    const name = String(item?.name || '').toLowerCase();
+    if (name.includes('fish')) return '🐟';
+    if (name.includes('meat') || name.includes('steak')) return '🍖';
+    if (name.includes('apple')) return '🍎';
+    if (name.includes('banana')) return '🍌';
+    if (name.includes('milk')) return '🥛';
+    if (name.includes('cookie')) return '🍪';
+    if (name.includes('cake')) return '🍰';
+    if (name.includes('carrot')) return '🥕';
+    if (name.includes('rice')) return '🍚';
+    if (name.includes('bread')) return '🍞';
+    return '🍖';
+}
+
 // ฟังก์ชันประมวลผลการให้อาหารด้วยระบบพฤติกรรมสัตว์เลี้ยงใหม่
-async function processFeedAction(client, interaction, msg, itemId) {
+async function processFeedAction(client, interaction, msg, itemId, inv) {
     try {
         const GPet = require("../../settings/models/pet.js");
         const pet = await GPet.findOne({ guild: interaction.guild.id, user: interaction.user.id });
         
         if (!pet) {
-            return msg.edit({ content: "คุณยังไม่มีสัตว์เลี้ยง", embeds: [], components: [] });
+            const embedNoPet = new EmbedBuilder()
+                .setTitle('ไม่พบสัตว์เลี้ยง')
+                .setDescription('คุณยังไม่มีสัตว์เลี้ยง กรุณาสร้างสัตว์เลี้ยงก่อนใช้งานคำสั่งนี้')
+                .setColor('#ff6961');
+            return msg.edit({ embeds: [embedNoPet], components: [] });
         }
 
         // ตรวจสอบว่าสัตว์กำลังนอนอยู่หรือไม่
         if (petSleepSystem.isPetSleeping(pet._id)) {
             const remainingMinutes = petSleepSystem.getRemainingSleepTime(pet._id);
-            return msg.edit({ 
-                content: `😴 สัตว์เลี้ยงกำลังนอนอยู่ ต้องรออีก **${remainingMinutes} นาที** ก่อนจะตื่น`, 
-                embeds: [], 
-                components: [] 
-            });
+            const embedSleep = new EmbedBuilder()
+                .setTitle('กำลังนอนอยู่')
+                .setDescription(`😴 สัตว์เลี้ยงกำลังนอนอยู่ ต้องรออีก **${remainingMinutes} นาที** ก่อนจะตื่น`)
+                .setColor('#ff6961');
+            return msg.edit({ embeds: [embedSleep], components: [] });
         }
 
-        // ใช้ระบบพฤติกรรมสัตว์เลี้ยงใหม่
-        const result = await petBehaviorSystem.processPlayerAction(pet._id, 'feed');
+        // ตรวจสอบความเหนื่อยล้า
+        const fatigue = Number(pet.fatigue ?? 0);
+        if (fatigue >= 20) {
+            const embedFat = new EmbedBuilder()
+                .setTitle('เหนื่อยล้าเกินไป')
+                .setDescription(`😴 **${pet.name} เหนื่อยล้ามากเกินไป!**\nสัตว์เลี้ยงต้องนอนพักผ่อนก่อน ใช้คำสั่ง \`/สัตว์เลี้ยง เข้านอน\``)
+                .setColor('#ff6961');
+            return msg.edit({ embeds: [embedFat], components: [] });
+        }
+
+        // เตือนถ้าเหนื่อยมาก (แต่ยังทำได้)
+        let fatigueWarning = '';
+        if (fatigue >= 15 && fatigue < 20) {
+            fatigueWarning = '\n⚠️ **คำเตือน:** สัตว์เลี้ยงเริ่มเหนื่อยล้ามาก ควรให้นอนพักผ่อนเร็วๆ นี้!';
+        }
+
+        // ดึงข้อมูลอาหารที่เลือก
+        const selectedFood = inv.item.find(x => x.id === itemId);
+        const expBonus = selectedFood?.exp || 1; // EXP จากอาหาร (default 1 ถ้าไม่มี)
+        
+        // ใช้ระบบพฤติกรรมสัตว์เลี้ยงใหม่ พร้อมส่ง EXP bonus
+        const result = await petBehaviorSystem.processPlayerAction(pet._id, 'feed', { expBonus });
         
         if (!result.success) {
-            return msg.edit({ content: `เกิดข้อผิดพลาด: ${result.error}`, embeds: [], components: [] });
+            const embedErr = new EmbedBuilder()
+                .setTitle('เกิดข้อผิดพลาด')
+                .setDescription(`รายละเอียด: ${result.error || 'ไม่ทราบสาเหตุ'}`)
+                .setColor('#ff6961');
+            return msg.edit({ embeds: [embedErr], components: [] });
         }
-
-        // ดึงข้อมูลสัตว์เลี้ยงที่อัปเดตแล้ว
-        const updatedPet = await GPet.findById(pet._id);
-        const emotion = getEmotionKey(updatedPet);
-        const pose = getPoseKey(updatedPet);
-        const health = calculateHealth(updatedPet);
-        const healthStatus = getHealthStatus(health);
-        const careRecommendations = getCareRecommendations(updatedPet);
 
         // สร้าง embed
         const embed = new EmbedBuilder()
-            .setTitle(`🍖 ให้อาหาร ${pet.name}`)
-            .setColor('#00ff00')
-            .setThumbnail(interaction.user.avatarURL())
+        .setAuthor({ name: `ให้อาหาร ${pet.name}`, iconURL: "https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/icon-sleep.png" })
+            .setColor('#e8f093')
+            .setThumbnail('https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/thumbnail/food.png')
             .setTimestamp();
 
         // แสดงปฏิกิริยาของสัตว์เลี้ยง
         if (result.reactions && result.reactions.length > 0) {
             embed.addFields({
                 name: "💬 ปฏิกิริยาของสัตว์เลี้ยง",
-                value: result.reactions.join('\n'),
+                value: result.reactions.join('\n') + fatigueWarning,
                 inline: false
             });
         }
 
-        // แสดงการเปลี่ยนแปลงของค่า
+        // แสดงการเปลี่ยนแปลงของค่า (สไตล์เดียวกับ Walk/Sleep/Play)
         const oldStats = {
             fatigue: pet.fatigue,
             affection: pet.affection,
@@ -175,80 +223,37 @@ async function processFeedAction(client, interaction, msg, itemId) {
         };
 
         const newStats = result.stats;
-
-        let changesText = '';
-        if (oldStats.fatigue !== newStats.fatigue) {
-            const change = newStats.fatigue - oldStats.fatigue;
-            changesText += `**ความล้า:** ${oldStats.fatigue} → ${newStats.fatigue} (${change > 0 ? '+' : ''}${change})\n`;
-        }
-        if (oldStats.affection !== newStats.affection) {
-            const change = newStats.affection - oldStats.affection;
-            changesText += `**ความเอ็นดู:** ${oldStats.affection} → ${newStats.affection} (${change > 0 ? '+' : ''}${change})\n`;
-        }
-        if (oldStats.fullness !== newStats.fullness) {
-            const change = newStats.fullness - oldStats.fullness;
-            changesText += `**ความอิ่ม:** ${oldStats.fullness} → ${newStats.fullness} (${change > 0 ? '+' : ''}${change})\n`;
-        }
+        const fmt = (n) => (Number.isInteger(n) ? `${n}` : `${Number(n).toFixed(1)}`);
+        const sign = (d) => (d > 0 ? `+${fmt(d)}` : `${fmt(d)}`);
+        const lines = [];
+        // ความสกปรก
         if (oldStats.dirtiness !== newStats.dirtiness) {
-            const change = newStats.dirtiness - oldStats.dirtiness;
-            changesText += `**ความสกปรก:** ${oldStats.dirtiness} → ${newStats.dirtiness} (${change > 0 ? '+' : ''}${change})\n`;
+            const d = newStats.dirtiness - oldStats.dirtiness;
+            lines.push(`<:dirtiness:1424394365677342741> **ความสกปรก:** ${fmt(newStats.dirtiness)}/20 (${sign(d)})`);
         }
-
-        if (changesText) {
-            embed.addFields({
-                name: "📊 การเปลี่ยนแปลงของค่า",
-                value: changesText,
-                inline: false
-            });
+        // ความล้า
+        if (oldStats.fatigue !== newStats.fatigue) {
+            const d = newStats.fatigue - oldStats.fatigue;
+            lines.push(`<:fatigue:1424394380604870727> **ความล้า:** ${fmt(newStats.fatigue)}/20 (${sign(d)})`);
         }
-
-        // แสดงสถานะปัจจุบัน
-        const emotionEmoji = getEmotionEmoji(emotion);
-        embed.addFields(
-            {
-                name: "💖 ค่าปัจจุบัน",
-                value: `**ความเอ็นดู:** ${newStats.affection}/20\n**ความอิ่ม:** ${newStats.fullness}/20\n**ความล้า:** ${newStats.fatigue}/20\n**ความสกปรก:** ${newStats.dirtiness}/20`,
-                inline: true
-            },
-            {
-                name: "🎭 สถานะปัจจุบัน",
-                value: `${emotionEmoji} **อีโมต:** ${getEmotionDescription(emotion)}\n🎭 **ท่าทาง:** ${getPoseDescription(pose)}\n🏥 **สุขภาพ:** ${health}/20 (${getHealthDescription(healthStatus)})`,
-                inline: true
-            }
-        );
-
-        // แสดงคำแนะนำต่อไป
-        if (careRecommendations.length > 0) {
-            const urgentRecs = careRecommendations.filter(rec => rec.priority === 'urgent');
-            const highRecs = careRecommendations.filter(rec => rec.priority === 'high');
-
-            if (urgentRecs.length > 0 || highRecs.length > 0) {
-                let nextStepsText = '';
-                
-                if (urgentRecs.length > 0) {
-                    nextStepsText += '🚨 **ควรทำทันที:**\n';
-                    urgentRecs.forEach(rec => {
-                        nextStepsText += `${rec.emoji} ${rec.message}\n`;
-                    });
-                    nextStepsText += '\n';
-                }
-
-                if (highRecs.length > 0) {
-                    nextStepsText += '⚠️ **ควรทำเร็วๆ นี้:**\n';
-                    highRecs.forEach(rec => {
-                        nextStepsText += `${rec.emoji} ${rec.message}\n`;
-                    });
-                }
-
-                if (nextStepsText) {
-                    embed.addFields({
-                        name: "📋 ขั้นตอนต่อไป",
-                        value: nextStepsText,
-                        inline: false
-                    });
-                }
-            }
+        // ความเอ็นดู
+        if (oldStats.affection !== newStats.affection) {
+            const d = newStats.affection - oldStats.affection;
+            lines.push(`<:love:1424394386497601687> **ความเอ็นดู:** ${fmt(newStats.affection)}/20 (${sign(d)})`);
         }
+        // ความอิ่ม
+        if (oldStats.fullness !== newStats.fullness) {
+            const d = newStats.fullness - oldStats.fullness;
+            lines.push(`<:Fullness:1424394383855452200> **ความอิ่ม:** ${fmt(newStats.fullness)}/20 (${sign(d)})`);
+        }
+        // EXP รวมในบล็อคเดียวกัน
+        lines.push(`<:exp:1424394377555607592> **EXP :** ${result.exp}/${result.nextexp} (+${fmt(result.expGain)})${result.leveledUp ? `\n**เลเวลอัป!** → เลเวล ${result.level} 🎉` : ''}`);
+
+        embed.addFields({
+            name: "ค่าสถานะ",
+            value: lines.join('\n'),
+            inline: false
+        });
 
         // Footer
         embed.setFooter({ 
@@ -259,10 +264,10 @@ async function processFeedAction(client, interaction, msg, itemId) {
 
     } catch (error) {
         console.error('Error in processFeedAction:', error);
-        await msg.edit({ 
-            content: "เกิดข้อผิดพลาดในการให้อาหารสัตว์เลี้ยง กรุณาลองใหม่อีกครั้ง", 
-            embeds: [], 
-            components: [] 
-        });
+        const embedCatch = new EmbedBuilder()
+            .setTitle('เกิดข้อผิดพลาด')
+            .setDescription('เกิดข้อผิดพลาดในการให้อาหารสัตว์เลี้ยง กรุณาลองใหม่อีกครั้ง')
+            .setColor('#ff6961');
+        await msg.edit({ embeds: [embedCatch], components: [] });
     }
 }

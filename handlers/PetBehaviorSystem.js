@@ -5,6 +5,9 @@ const GPet = require("../settings/models/pet.js");
  * ระบบจำลองพฤติกรรมสัตว์เลี้ยงที่สมบูรณ์
  * ใช้ค่าหลัก 4 ตัว: Fatigue, Affection, Fullness, Dirtiness
  * พร้อมระบบอารมณ์, ท่าทาง, อีโมต, และปฏิกิริยา
+ * 
+ * หมายเหตุ: ระบบนี้ถูกปิดการใช้งานแล้ว (DISABLED) เพื่อป้องกันการซ้ำซ้อนกับ PetGameLoop
+ * ยังคงใช้ processPlayerAction() สำหรับการกระทำของผู้เล่น (feed, clean, play, sleep)
  */
 
 // ค่าคงที่สำหรับระบบ
@@ -55,37 +58,111 @@ const EMOTES = {
 // ปฏิกิริยา (คำพูด)
 const REACTIONS = {
     // ความหิว
-    HUNGRY_START: "อยากกินข้าวแล้ว...",
-    HUNGRY_VERY: "หิวมากเลย! ให้อาหารหน่อยได้ไหม?",
+    HUNGRY_START: [
+        "สัตว์เลี้ยงทำเสียงครางเบาๆ และมองหาชามอาหาร",
+        "มันเดินวนไปมารอบๆ จุดให้อาหาร",
+        "เลียปากเบาๆ พร้อมมองเจ้าของด้วยสายตาอ้อนวอน"
+    ],
+    HUNGRY_VERY: [
+        "มันร้องเสียงดังและข่วนภาชนะอาหาร",
+        "เดินเข้ามาใกล้เจ้าของพร้อมเห่าหรือครางเสียงหิว",
+        "น้ำลายไหลเล็กน้อย ขณะจ้องมองอาหารอย่างจดจ่อ"
+    ],
     
     // ความสกปรก
-    DIRTY_START: "เหม็นจังเลยนะ 😠",
-    DIRTY_VERY: "ตัวสกปรกมาก! อาบน้ำให้หน่อย!",
+    DIRTY_START: [
+        "มันสะบัดตัวแรงๆ เหมือนจะปัดฝุ่นออก",
+        "เกาและเลียขนตัวเองบ่อยขึ้น",
+        "ขยับตัวไปมาอย่างหงุดหงิด เหมือนรู้สึกเหนียวตัว"
+    ],
+    DIRTY_VERY: [
+        "มันสั่นขนและพยายามหนีออกจากที่สกปรก",
+        "ข่วนตัวแรงขึ้นและส่งเสียงครางไม่พอใจ",
+        "กระโดดถอยหนีเมื่อตัวเปื้อนน้ำหรือดิน"
+    ],
     
     // ความล้า
-    TIRED_START: "เหนื่อยจัง...",
-    TIRED_VERY: "ง่วงมาก! อยากนอนแล้ว",
+    TIRED_START: [
+        "มันนั่งหอบเบาๆ แล้วขดตัวลงพัก",
+        "ขยี้ตาและหาวหนึ่งครั้ง",
+        "เดินช้าลงและเริ่มนอนหมอบอยู่กับพื้น"
+    ],
+    TIRED_VERY: [
+        "มันล้มตัวลงหลับทันทีโดยไม่สนสิ่งรอบข้าง",
+        "ขยับหางช้าๆ แล้วปิดตาหลับสนิท",
+        "นอนขดตัวแน่นและไม่ตอบสนองต่อสิ่งรอบตัว"
+    ],
     
-    // ความเอ็นดู
-    AFFECTION_LOW: "เจ้าของไม่สนใจฉันเลย...",
-    AFFECTION_HIGH: "ชอบอยู่กับเจ้าของที่สุดเลย 💖",
+    // ความเอ็นดู (Affection)
+    AFFECTION_LOW: [
+        "มันนั่งมองเจ้าของอยู่ห่างๆ ด้วยแววตาเศร้า",
+        "เดินไปมาใกล้ๆ เจ้าของแล้วเงียบลง",
+        "พยายามเข้ามาใกล้แต่หยุดอยู่ครึ่งทาง"
+    ],
+    AFFECTION_HIGH: [
+        "มันกระดิกหางและปีนขึ้นมาอิงตัวเจ้าของ",
+        "ส่งเสียงครางเบาๆ แล้วเลียมือเจ้าของ",
+        "กลิ้งไปมาอย่างมีความสุขเมื่อถูกลูบหัว"
+    ],
     
     // การเล่น
-    PLAY_START: "สนุกจัง! เล่นต่อได้ไหม?",
-    PLAY_END: "ขอบคุณที่เล่นด้วย!",
+    PLAY_START: [
+        "มันกระโดดโลดเต้นและวิ่งวนรอบเจ้าของ",
+        "ส่งเสียงร่าเริงพร้อมเห่าหรือกระดิกหางแรงๆ",
+        "คาบของเล่นมาวางตรงหน้าเหมือนชวนเล่น"
+    ],
+    PLAY_END: [
+        "มันนั่งลงหอบเบาๆ ด้วยท่าทีพอใจ",
+        "กลิ้งตัวลงบนพื้นอย่างเหนื่อยแต่มีความสุข",
+        "ขดตัวลงพักพร้อมกระดิกหางเบาๆ"
+    ],
     
     // การอาบน้ำ
-    CLEAN_LIKE: "น้ำอุ่นดี! รู้สึกสดชื่น",
-    CLEAN_DISLIKE: "น้ำเย็นไปหน่อย! แต่ก็ขอบคุณ",
+    CLEAN_LIKE: [
+        "มันสั่นขนหลังอาบน้ำแล้วเดินมาหาเจ้าของ",
+        "ยืดตัวและเดินไปมาอย่างสบายตัว",
+        "กระดิกหางแรงๆ เหมือนรู้สึกสดชื่น"
+    ],
+    CLEAN_DISLIKE: [
+        "มันพยายามหนีจากน้ำและสะบัดตัวแรงๆ",
+        "สั่นขนอย่างไม่พอใจและเดินหนีไปหลบมุม",
+        "เลียขนตัวเองแรงๆ เพื่อให้แห้งเร็ว"
+    ],
     
     // การให้อาหาร
-    FEED_GOOD: "อร่อยมาก! ขอบคุณ",
-    FEED_TOO_MUCH: "อิ่มเกินไป... อยากนอน",
+    FEED_GOOD: [
+        "มันรีบกินจนหมดและเลียชามอย่างมีความสุข",
+        "กระดิกหางแรงๆ หลังจากกินเสร็จ",
+        "นั่งพุงป่องและมองเจ้าของอย่างพอใจ"
+    ],
+    FEED_TOO_MUCH: [
+        "มันนอนหมอบลงและหาวด้วยท้องอิ่ม",
+        "เดินช้าๆ แล้วนอนตะแคงพัก",
+        "ขดตัวแน่นเหมือนท้องแน่นและหลับไป"
+    ],
     
     // การนอน
-    SLEEP_START: "ง่วงแล้ว... ไปนอนก่อน",
-    SLEEP_END: "ตื่นแล้ว! รู้สึกดีขึ้น"
+    SLEEP_START: [
+        "มันค่อยๆ ปิดตาและขดตัวในที่นุ่ม",
+        "ยืดตัวก่อนจะล้มตัวลงนอน",
+        "หาวหนึ่งครั้งแล้วหลับตาเบาๆ"
+    ],
+    SLEEP_END: [
+        "มันลุกขึ้นยืดตัวและกระดิกหางเบาๆ",
+        "ส่ายหัวเบาๆ แล้วเดินไปหาเจ้าของ",
+        "ส่งเสียงครางสั้นๆ เหมือนทักทายหลังตื่น"
+    ]
 };
+
+
+function pickReaction(key) {
+    const value = REACTIONS[key];
+    if (Array.isArray(value)) {
+        const idx = Math.floor(Math.random() * value.length);
+        return value[idx];
+    }
+    return value;
+}
 
 class PetBehaviorSystem {
     constructor() {
@@ -168,6 +245,9 @@ class PetBehaviorSystem {
      * กำหนดโหมดของสัตว์เลี้ยงตามสถานะปัจจุบัน
      */
     determinePetMode(pet) {
+        // ถ้ากำลังนอนอยู่ → ใช้โหมดนอน
+        if (pet.isSleeping) return PET_MODES.SLEEP;
+
         const fatigue = Number(pet.fatigue || 0);
         const fullness = Number(pet.fullness || 0);
         const affection = Number(pet.affection || 0);
@@ -299,31 +379,31 @@ class PetBehaviorSystem {
 
         // ตรวจสอบการเปลี่ยนแปลงที่สำคัญ
         if (newStats.fullness <= 4 && oldStats.fullness > 4) {
-            reactions.push(REACTIONS.HUNGRY_START);
+            reactions.push(pickReaction('HUNGRY_START'));
         }
         if (newStats.fullness <= 2 && oldStats.fullness > 2) {
-            reactions.push(REACTIONS.HUNGRY_VERY);
+            reactions.push(pickReaction('HUNGRY_VERY'));
         }
 
         if (newStats.dirtiness >= 15 && oldStats.dirtiness < 15) {
-            reactions.push(REACTIONS.DIRTY_START);
+            reactions.push(pickReaction('DIRTY_START'));
         }
         if (newStats.dirtiness >= 17 && oldStats.dirtiness < 17) {
-            reactions.push(REACTIONS.DIRTY_VERY);
+            reactions.push(pickReaction('DIRTY_VERY'));
         }
 
         if (newStats.fatigue >= 15 && oldStats.fatigue < 15) {
-            reactions.push(REACTIONS.TIRED_START);
+            reactions.push(pickReaction('TIRED_START'));
         }
         if (newStats.fatigue >= 17 && oldStats.fatigue < 17) {
-            reactions.push(REACTIONS.TIRED_VERY);
+            reactions.push(pickReaction('TIRED_VERY'));
         }
 
         if (newStats.affection <= 3 && oldStats.affection > 3) {
-            reactions.push(REACTIONS.AFFECTION_LOW);
+            reactions.push(pickReaction('AFFECTION_LOW'));
         }
         if (newStats.affection >= 17 && oldStats.affection < 17) {
-            reactions.push(REACTIONS.AFFECTION_HIGH);
+            reactions.push(pickReaction('AFFECTION_HIGH'));
         }
 
         return reactions;
@@ -332,7 +412,7 @@ class PetBehaviorSystem {
     /**
      * อัปเดตข้อมูลสัตว์เลี้ยงในฐานข้อมูล
      */
-    async updatePetInDatabase(pet, stats, mood, health, reactions) {
+    async updatePetInDatabase(pet, stats, mood, health, reactions, exp = null, level = null, nextexp = null) {
         try {
             const updateData = {
                 fatigue: stats.fatigue,
@@ -343,6 +423,17 @@ class PetBehaviorSystem {
                 health: health,
                 lastUpdate: new Date()
             };
+
+            // เพิ่ม EXP และ Level (ถ้ามีการส่งมา)
+            if (exp !== null) {
+                updateData.exp = exp;
+            }
+            if (level !== null) {
+                updateData.level = level;
+            }
+            if (nextexp !== null) {
+                updateData.nextexp = nextexp;
+            }
 
             // เพิ่มปฏิกิริยาใหม่ (ถ้ามี)
             if (reactions.length > 0) {
@@ -355,7 +446,7 @@ class PetBehaviorSystem {
                 { $set: updateData }
             );
 
-            console.log(`[PET_BEHAVIOR] Updated pet ${pet._id}:`, {
+            const logData = {
                 fatigue: stats.fatigue,
                 affection: stats.affection,
                 fullness: stats.fullness,
@@ -363,7 +454,13 @@ class PetBehaviorSystem {
                 mood: mood,
                 health: health,
                 reactions: reactions.length
-            });
+            };
+
+            if (exp !== null) logData.exp = exp;
+            if (level !== null) logData.level = level;
+            if (nextexp !== null) logData.nextexp = nextexp;
+
+            console.log(`[PET_BEHAVIOR] Updated pet ${pet._id}:`, logData);
 
         } catch (error) {
             console.error(`[PET_BEHAVIOR] Error updating pet ${pet._id} in database:`, error);
@@ -388,49 +485,93 @@ class PetBehaviorSystem {
                 dirtiness: Number(pet.dirtiness || 0)
             };
 
+            // ตรวจสอบความเหนื่อยล้า - ถ้าเหนื่อยมากจะได้ผลน้อยลง
+            const fatigueMultiplier = stats.fatigue >= 15 ? 0.5 : 1.0; // ถ้าเหนื่อย >= 15 จะได้ผลแค่ 50%
+            const isTired = stats.fatigue >= 15;
+
+            // กำหนด EXP ที่จะได้รับตาม action
+            let expGain = 0;
+
             switch (action) {
                 case 'feed':
-                    // ให้อาหาร: เพิ่มความอิ่มและ affection เล็กน้อย
-                    stats.fullness = Math.min(STAT_RANGES.MAX, stats.fullness + 5);
-                    stats.affection = Math.min(STAT_RANGES.MAX, stats.affection + 1);
+                    // ให้อาหาร: เพิ่มความอิ่ม +4 และ affection +1, EXP +1 (หรือใช้ bonus จากอาหาร)
+                    expGain = params.expBonus || 1; // ใช้ EXP จากอาหารถ้ามี ไม่งั้นใช้ default +1
+                    const fullnessGain = Math.round(4 * fatigueMultiplier); // ลดจาก 5 → 4
+                    const affectionGainFeed = Math.round(1 * fatigueMultiplier);
+                    
+                    stats.fullness = Math.min(STAT_RANGES.MAX, stats.fullness + fullnessGain);
+                    stats.affection = Math.min(STAT_RANGES.MAX, stats.affection + affectionGainFeed);
                     
                     if (stats.fullness >= 18) {
-                        reactions.push(REACTIONS.FEED_TOO_MUCH);
+                        reactions.push(pickReaction('FEED_TOO_MUCH'));
+                    } else if (isTired) {
+                        reactions.push("กินได้แต่ยังง่วงนอนอยู่... 😴");
                     } else {
-                        reactions.push(REACTIONS.FEED_GOOD);
+                        reactions.push(pickReaction('FEED_GOOD'));
                     }
                     break;
 
                 case 'clean':
-                    // ทำความสะอาด: ลดความสกปรก
-                    const oldDirtiness = stats.dirtiness;
-                    stats.dirtiness = Math.max(STAT_RANGES.MIN, stats.dirtiness - 8);
+                    // ทำความสะอาด: ลดความสกปรก -10 (หรือ -6 ถ้าเหนื่อย), EXP +2
+                    expGain = 2;
+                    const cleanAmount = isTired ? 6 : 10; // ชัดเจน: ไม่เหนื่อย = 10, เหนื่อย = 6
+                    stats.dirtiness = Math.max(STAT_RANGES.MIN, stats.dirtiness - cleanAmount);
                     
                     // มีโอกาส 20% ที่สัตว์จะไม่ชอบอาบน้ำ
                     if (Math.random() < 0.2) {
-                        reactions.push(REACTIONS.CLEAN_DISLIKE);
+                        reactions.push(pickReaction('CLEAN_DISLIKE'));
                     } else {
-                        reactions.push(REACTIONS.CLEAN_LIKE);
-                        stats.affection = Math.min(STAT_RANGES.MAX, stats.affection + 1);
+                        if (isTired) {
+                            reactions.push("อาบน้ำแล้วยังง่วงอยู่... 😴");
+                        } else {
+                            reactions.push(pickReaction('CLEAN_LIKE'));
+                        }
+                        const affectionGainClean = Math.round(1 * fatigueMultiplier);
+                        stats.affection = Math.min(STAT_RANGES.MAX, stats.affection + affectionGainClean);
                     }
                     break;
 
                 case 'play':
-                    // เล่นด้วย: เพิ่ม affection มาก แต่ทำให้เหนื่อยและสกปรก
-                    stats.affection = Math.min(STAT_RANGES.MAX, stats.affection + 3);
-                    stats.fatigue = Math.min(STAT_RANGES.MAX, stats.fatigue + 2);
+                    // เล่นด้วย: เพิ่ม affection +3, เหนื่อย +1, EXP +3
+                    expGain = 3;
+                    const affectionGainPlay = Math.round(3 * fatigueMultiplier);
+                    const fatigueGainPlay = isTired ? 2 : 1;
+                    
+                    stats.affection = Math.min(STAT_RANGES.MAX, stats.affection + affectionGainPlay);
+                    stats.fatigue = Math.min(STAT_RANGES.MAX, stats.fatigue + fatigueGainPlay);
                     stats.dirtiness = Math.min(STAT_RANGES.MAX, stats.dirtiness + 1);
                     stats.fullness = Math.max(STAT_RANGES.MIN, stats.fullness - 1);
                     
-                    reactions.push(REACTIONS.PLAY_START);
+                    if (isTired) {
+                        reactions.push("เล่นได้นิดหน่อย... เหนื่อยมากแล้ว 😴");
+                    } else {
+                        reactions.push(pickReaction('PLAY_START'));
+                    }
+                    break;
+
+                case 'walk':
+                    // พาเดินเล่น: เพิ่ม affection +2, เหนื่อยน้อย +0.5, EXP +2
+                    expGain = 2;
+                    const affectionGainWalk = Math.round(2 * fatigueMultiplier); // เพิ่มจาก 1 → 2
+                    const fatigueGainWalk = isTired ? 1 : 0.5; // ลดความเหนื่อย
+                    
+                    stats.affection = Math.min(STAT_RANGES.MAX, stats.affection + affectionGainWalk);
+                    stats.fatigue = Math.min(STAT_RANGES.MAX, stats.fatigue + fatigueGainWalk);
+                    stats.dirtiness = Math.min(STAT_RANGES.MAX, stats.dirtiness + 0.5);
+                    stats.fullness = Math.max(STAT_RANGES.MIN, stats.fullness - 0.5);
+                    
+                    if (isTired) {
+                        reactions.push("เดินได้นิดหน่อย... เหนื่อยมากแล้ว 😴");
+                    } else {
+                        reactions.push("เดินเล่นสนุกดี! เห็นทิวทัศน์สวยๆ 🌳");
+                    }
                     break;
 
                 case 'sleep':
-                    // นอน: ลดความล้าอย่างรวดเร็ว
-                    stats.fatigue = Math.max(STAT_RANGES.MIN, stats.fatigue - 5);
-                    stats.fullness = Math.max(STAT_RANGES.MIN, stats.fullness - 1);
-                    
-                    reactions.push(REACTIONS.SLEEP_START);
+                    // นอน: ไม่เพิ่ม EXP ที่นี่ (PetSleepSystem.wakeUpPet() จะเพิ่มให้ +4)
+                    // PetSleepSystem จะจัดการการลด fatigue และเพิ่ม EXP
+                    expGain = 0;
+                    reactions.push(pickReaction('SLEEP_START'));
                     break;
             }
 
@@ -438,15 +579,36 @@ class PetBehaviorSystem {
             const newMood = this.calculateMood(stats);
             const health = this.calculateHealth(stats);
 
-            // อัปเดตฐานข้อมูล
-            await this.updatePetInDatabase(pet, stats, newMood, health, reactions);
+            // คำนวณ EXP และ Level
+            let exp = Number(pet.exp || 0) + expGain;
+            let level = Number(pet.level || 1);
+            let nextexp = Number(pet.nextexp || Math.floor(level * level * 1.5));
+            let leveledUp = false;
+
+            // ตรวจสอบ level up
+            while (exp >= nextexp) {
+                const diff = exp - nextexp;
+                level += 1;
+                nextexp = Math.floor(level * level * 1.5);
+                exp = diff;
+                leveledUp = true;
+                console.log(`[PET_BEHAVIOR] Pet ${petId} leveled up to ${level}!`);
+            }
+
+            // อัปเดตฐานข้อมูล (รวม EXP และ Level)
+            await this.updatePetInDatabase(pet, stats, newMood, health, reactions, exp, level, nextexp);
 
             return {
                 success: true,
                 stats: stats,
                 mood: newMood,
                 health: health,
-                reactions: reactions
+                reactions: reactions,
+                exp: exp,
+                level: level,
+                nextexp: nextexp,
+                expGain: expGain,
+                leveledUp: leveledUp
             };
 
         } catch (error) {

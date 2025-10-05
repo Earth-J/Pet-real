@@ -84,8 +84,9 @@ const petSelect = async function (client, interaction, msg, id) {
                   affection: Number(mypet.affection ?? 0),
                 };
 
-                // EXP
-                mypet.exp = Number(mypet.exp || 0) + Number(item.exp || 0);
+                // EXP จากอาหาร
+                const expGain = Number(item.exp || 1); // ใช้ EXP จากอาหาร
+                mypet.exp = Number(mypet.exp || 0) + expGain;
 
                 // ใช้สคีมาใหม่: เพิ่มความอิ่ม
                 const nextFullness = clamp(before.fullness + Number(item.feed || 0));

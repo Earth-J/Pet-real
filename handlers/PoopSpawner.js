@@ -65,15 +65,17 @@ function getRandomEmptySlot(home) {
 function createPoopLayer(slotInfo) {
   if (!slotInfo) return null;
   
-  // คำนวณตำแหน่งกลางของสล็อต
-  const centerX = slotInfo.draw.x + (slotInfo.draw.w / 2);
-  const centerY = slotInfo.draw.y + (slotInfo.draw.h / 2);
+  // ใช้ anchor กลางด้านล่างของสล็อต และเลื่อนขึ้นเล็กน้อย
+  const anchorX = slotInfo.draw.x + (slotInfo.draw.w / 2);
+  const anchorY = slotInfo.draw.y + slotInfo.draw.h;
   
-  // ขนาดของ poop (75x55 pixels)
-  const poopWidth = 75;
-  const poopHeight = 87;
-  const poopX = centerX - (poopWidth / 2);
-  const poopY = centerY - (poopHeight / 2);
+  const poopWidth = 26;
+  const poopHeight = 26;
+  let poopX = Math.round(anchorX - (poopWidth / 2));
+  let poopY = Math.round(anchorY - Math.floor(poopHeight / 2) - 8);
+  // clamp ให้อยู่ภายในแคนวาส 300x300
+  poopX = Math.max(0, Math.min(poopX, 300 - poopWidth));
+  poopY = Math.max(0, Math.min(poopY, 300 - poopHeight));
   
   return {
     type: 'static',
@@ -119,12 +121,13 @@ async function spawnPoopForPets() {
   try {
     console.log('[PoopSpawner] Starting poop spawn check...');
     
-    // หา pets ที่มี dirtiness > 0
+    // หา pets ที่มี dirtiness > 5 และไม่ได้นอนอยู่
     const petsWithDirtiness = await GPet.find({ 
-      dirtiness: { $gt: 5 } 
+      dirtiness: { $gt: 5 },
+      isSleeping: { $ne: true } // ไม่ spawn poop ถ้าสัตว์เลี้ยงกำลังนอน
     }).lean();
     
-    console.log(`[PoopSpawner] Found ${petsWithDirtiness.length} pets with dirtiness`);
+    console.log(`[PoopSpawner] Found ${petsWithDirtiness.length} pets with dirtiness (awake only)`);
     
     for (const pet of petsWithDirtiness) {
       try {

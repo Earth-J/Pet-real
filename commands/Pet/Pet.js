@@ -16,6 +16,14 @@ const GHome = require("../../settings/models/house.js");
 const { buildHouseLayers } = require("../../structures/services/layout");
 const { buildCdnUrlFromLocal } = require("../../structures/utils/cdn");
 
+// helper embeds
+function buildInfoEmbed(description, color = '#e8f093', title) {
+  const emb = new EmbedBuilder().setColor(color);
+  if (title) emb.setTitle(title);
+  if (description) emb.setDescription(description);
+  return emb;
+}
+
 // ลงทะเบียนฟอนต์ไทย (ถ้ามีไฟล์ในโปรเจกต์)
 let THAI_FONT_READY = false;
 const STATUS_FONT_FAMILY = process.env.PET_STATUS_FONT_FAMILY || 'Noto Sans Thai';
@@ -235,16 +243,16 @@ const localGifSemaphore = createSemaphore(PET_LOCAL_GIF_MAX_CONCURRENCY);
 
 // helper: แปลง emotion/pose เป็นข้อความภาษาไทยสั้นๆ
 function getThaiStatusText(emotion, poseKey) {
-  if (poseKey === 'seep') return 'H';
+  if (poseKey === 'seep') return 'PET CARD';
   switch (emotion) {
-    case 'angry': return 'H';
-    case 'happy': return 'H';
-    case 'hungry': return 'H';
-    case 'playing': return 'H';
-    case 'sleep': return  'H';
-    case 'smelly': return 'H';
-    case 'unclean': return 'H';
-    default: return 'H';
+    case 'angry': return 'PET CARD';
+    case 'happy': return 'PET CARD';
+    case 'hungry': return 'PET CARD';
+    case 'playing': return 'PET CARD';
+    case 'sleep': return  'PET CARD';
+    case 'smelly': return 'PET CARD';
+    case 'unclean': return 'PET CARD';
+    default: return 'PET CARD';
   }
 }
 
@@ -252,13 +260,13 @@ function getThaiStatusText(emotion, poseKey) {
 function getAdviceText(emotion, poseKey) {
   if (poseKey === 'seep') return 'ซึมๆ • แนะนำ: ให้พักผ่อนหรือเล่นด้วยเพื่อเพิ่ม Affection';
   switch (emotion) {
-    case 'angry': return 'โกรธ • แนะนำ: เล่น/ลูบเพื่อเพิ่ม Affection และตรวจความสะอาด';
-    case 'happy': return 'มีความสุข • แนะนำ: รักษา Affection/Fullness ต่อเนื่อง';
-    case 'hungry': return 'หิว • แนะนำ: ให้อาหารเพื่อเพิ่ม Fullness';
-    case 'playing': return 'พร้อมเล่น • แนะนำ: เล่นด้วยเพื่อลด Fatigue และเพิ่ม Affection';
-    case 'sleep': return 'ง่วง/พักผ่อน • แนะนำ: ให้พักเพื่อลด Fatigue';
-    case 'smelly': return 'เหม็น • แนะนำ: อาบน้ำเพื่อลด Dirtiness';
-    case 'unclean': return 'สกปรก • แนะนำ: ทำความสะอาดเพื่อลด Dirtiness';
+    case 'angry': return 'โกรธ • แนะนำ: เล่นด้วยเพื่อเพิ่มความสุขและตรวจความสะอาด';
+    case 'happy': return 'มีความสุข • แนะนำ: รักษาค่าความเอ็นดูเเละค่าความอิ่มต่อเนื่อง';
+    case 'hungry': return 'หิว • แนะนำ: ให้อาหารเพื่อเพิ่มค่าความอิ่ม';
+    case 'playing': return 'พร้อมเล่น • แนะนำ: เล่นด้วยเพื่อเพิ่มค่าความเอ็นดู';
+    case 'sleep': return 'ง่วง/พักผ่อน • แนะนำ: ให้พักเพื่อลดความล้า';
+    case 'smelly': return 'เหม็น • แนะนำ: อาบน้ำเพื่อลดความสกปรก';
+    case 'unclean': return 'สกปรก • แนะนำ: ทำความสะอาดเพื่อลดความสกปรก';
     default: return 'ปกติ • แนะนำ: ดูแลทั่วไป เช่น เล่น/ให้อาหารตามจำเป็น';
   }
 }
@@ -749,12 +757,17 @@ async function renderHouseAttachment(home, pet, state, poseKey) {
                 pdbg('house.poop.slot', { slot, hasPoop, slotDraw: SLOT_DRAWS[slot] });
                 if (hasPoop && SLOT_DRAWS[slot]) {
                   const slotRect = SLOT_DRAWS[slot];
-                  const centerX = slotRect.x + (slotRect.w / 2);
-                  const centerY = slotRect.y + (slotRect.h / 2);
-                  const poopWidth = 75;
-                  const poopHeight = 87;
-                  const poopX = centerX - (poopWidth / 2);
-                  const poopY = centerY - (poopHeight / 2);
+                  // ใช้ anchor กลางด้านล่างของสล็อต (เหมือนสัตว์เลี้ยง) แล้วเลื่อนขึ้นเล็กน้อย
+                  const anchorX = slotRect.x + (slotRect.w / 2);
+                  const anchorY = slotRect.y + slotRect.h;
+                  const poopWidth = 26;
+                  const poopHeight = 26;
+                  // วางให้กึ่งกลาง poop อยู่แถว ๆ ใต้เท้าสัตว์เลี้ยงเล็กน้อย (เลื่อนขึ้น 8px)
+                  let poopX = Math.round(anchorX - (poopWidth / 2));
+                  let poopY = Math.round(anchorY - Math.floor(poopHeight / 2) - 8);
+                  // clamp ภายในแคนวาส 300x300
+                  poopX = Math.max(0, Math.min(poopX, 300 - poopWidth));
+                  poopY = Math.max(0, Math.min(poopY, 300 - poopHeight));
                   
                   const poopLayer = {
                     type: 'static',
@@ -909,9 +922,10 @@ async function renderHouseAttachment(home, pet, state, poseKey) {
                 } catch (_) { /* skip furniture */ }
               }
 
+              // วาง poop ใต้ pet/emote เพื่อให้สัตว์เลี้ยงและอีโมจิทับอยู่ด้านบน
+              for (const layer of poopLayers) layersHouse.push(layer);
               for (const layer of petLayers) layersHouse.push(layer);
               for (const layer of emoteLayers) layersHouse.push(layer);
-              for (const layer of poopLayers) layersHouse.push(layer);
 
               try {
                 const petName = String(pet?.name || '').trim();
@@ -973,9 +987,10 @@ async function renderHouseAttachment(home, pet, state, poseKey) {
           layersHouse.push({ type: 'furniture', key, draw: fl.draw });
         } catch (_) { /* skip furniture */ }
       }
+      // วาง poop ก่อน เพื่อให้ pet/emote อยู่หน้าสุดเหนือ poop
+      for (const layer of poopLayers) layersHouse.push(layer);
       for (const layer of petLayers) layersHouse.push(layer);
       for (const layer of emoteLayers) layersHouse.push(layer);
-      for (const layer of poopLayers) layersHouse.push(layer);
     }
 
     pdbg('house.layers.final', { count: layersHouse.length });
@@ -1013,22 +1028,22 @@ async function execute(client, interaction) {
 
         pet = await GPet.findOne({ guild: interaction.guild.id, user: interaction.user.id });
         if(!pet) {
-            return interaction.editReply("You don't have a pet yet.");
+            return interaction.editReply({ embeds: [buildInfoEmbed('คุณยังไม่มีสัตว์เลี้ยง', '#e74c3c', 'แจ้งเตือน')] });
         }
 
-        msg = await interaction.editReply("กำลังโหลดสัตว์เลี้ยงของคุณ...");
+        msg = await interaction.editReply({ embeds: [buildInfoEmbed('กำลังโหลดสัตว์เลี้ยงของคุณ...', '#e74c3c', 'กำลังโหลด')] });
     } catch (error) {
         console.error('Error in pet command:', error);
         // ตรวจสอบสถานะ interaction ก่อน reply
         if (!interaction.replied && !interaction.deferred) {
             try {
-                await interaction.reply({ content: "เกิดข้อผิดพลาดในการโหลด pet กรุณาลองใหม่", ephemeral: true });
+                await interaction.reply({ embeds: [buildInfoEmbed('เกิดข้อผิดพลาดในการโหลด pet กรุณาลองใหม่', '#e74c3c', 'ข้อผิดพลาด')], ephemeral: true });
             } catch (replyError) {
                 console.error('Failed to reply to interaction:', replyError);
             }
         } else if (interaction.deferred && !interaction.replied) {
             try {
-                await interaction.editReply({ content: "เกิดข้อผิดพลาดในการโหลด pet กรุณาลองใหม่" });
+                await interaction.editReply({ embeds: [buildInfoEmbed('เกิดข้อผิดพลาดในการโหลด pet กรุณาลองใหม่', '#e74c3c', 'ข้อผิดพลาด')] });
             } catch (editError) {
                 console.error('Failed to edit interaction:', editError);
             }
@@ -1125,7 +1140,7 @@ async function execute(client, interaction) {
         const petEmbed = new EmbedBuilder()
           .setAuthor({ name: authorName, iconURL: interaction.user.avatarURL() })
           .setImage(`attachment://${attName}`)
-          .setColor(needsUrgent ? '#ff0000' : (health >= 15 ? '#00ff00' : client.color))
+          .setColor(needsUrgent ? '#e8f093' : (health >= 15 ? '#e8f093' : client.color))
           .setFooter({ text: footerText });
         embeds.push(petEmbed);
       }
@@ -1141,7 +1156,7 @@ async function execute(client, interaction) {
           files
         });
     } else {
-      await msg.edit({ content: 'ไม่สามารถสร้างผลลัพธ์ได้ กรุณาลองใหม่อีกครั้ง', embeds: [], files: [] });
+      await msg.edit({ embeds: [buildInfoEmbed('ไม่สามารถสร้างผลลัพธ์ได้ กรุณาลองใหม่อีกครั้ง', '#e74c3c', 'ข้อผิดพลาด')], files: [] });
     }
   } catch (error) {
       console.error('Error rendering pet:', error);
@@ -1149,20 +1164,20 @@ async function execute(client, interaction) {
         // ตรวจสอบว่า interaction ยังใช้งานได้หรือไม่
         if (interaction.replied || interaction.deferred) {
           if (error.message === 'RENDER_TIMEOUT') {
-            await interaction.editReply({ content: '⏰ การสร้าง pet card ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง', embeds: [], files: [] });
+            await interaction.editReply({ embeds: [buildInfoEmbed('⏰ การสร้าง pet card ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง', '#e67e22', 'หมดเวลา')], files: [] });
           } else {
-            await interaction.editReply({ content: '❌ เกิดข้อผิดพลาดในการสร้าง pet card กรุณาลองใหม่อีกครั้ง', embeds: [], files: [] });
+            await interaction.editReply({ embeds: [buildInfoEmbed('❌ เกิดข้อผิดพลาดในการสร้าง pet card กรุณาลองใหม่อีกครั้ง', '#e74c3c', 'ข้อผิดพลาด')], files: [] });
           }
         } else {
           // ถ้า interaction ยังไม่ได้ reply ให้ reply ใหม่
-          await interaction.reply({ content: '❌ เกิดข้อผิดพลาดในการสร้าง pet card กรุณาลองใหม่อีกครั้ง', ephemeral: true });
+          await interaction.reply({ embeds: [buildInfoEmbed('❌ เกิดข้อผิดพลาดในการสร้าง pet card กรุณาลองใหม่อีกครั้ง', '#e74c3c', 'ข้อผิดพลาด')], ephemeral: true });
         }
       } catch (editError) {
         console.error('Failed to edit message:', editError);
         // ถ้า edit ไม่ได้ ให้พยายาม reply ใหม่
         try {
           if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: '❌ เกิดข้อผิดพลาดในการสร้าง pet card กรุณาลองใหม่อีกครั้ง', ephemeral: true });
+            await interaction.reply({ embeds: [buildInfoEmbed('❌ เกิดข้อผิดพลาดในการสร้าง pet card กรุณาลองใหม่อีกครั้ง', '#e74c3c', 'ข้อผิดพลาด')], ephemeral: true });
           }
         } catch (finalError) {
           console.error('Failed to send final error message:', finalError);
@@ -1173,7 +1188,7 @@ async function execute(client, interaction) {
 
 module.exports = {
   name: ["สัตว์เลี้ยง", "บ้าน"],
-  description: "Display your pet.",
+  description: "เเสดงสัตว์เลี้ยงของคุณ",
   category: "Pet",
   run: execute
 }

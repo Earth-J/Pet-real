@@ -23,11 +23,12 @@ function checkCooldown(userId) {
 }
 
 // Food items for pets
+// ราคา = EXP * ประมาณ 70 บาท (ลดลงเมื่อซื้อแพงขึ้น = bulk discount)
 const PET_FOODS = [
     {
         id: "basic_food",
         name: "อาหารเม็ดคุณภาพเเย่",
-        price: 300,
+        price: 150, // 75 บาท/EXP (ลดจาก 300)
         type: "food",
         feed: 1,
         exp: 2,
@@ -36,7 +37,7 @@ const PET_FOODS = [
     {
         id: "premium_food",
         name: "อาหารเม็ดคุณภาพดี",
-        price: 500,
+        price: 350, // 70 บาท/EXP (ลดจาก 500)
         type: "food",
         feed: 2,
         exp: 5,
@@ -45,7 +46,7 @@ const PET_FOODS = [
     {
         id: "deluxe_food",
         name: "ทาโก้",
-        price: 700,
+        price: 650, // 65 บาท/EXP (ลดจาก 700)
         type: "food",
         feed: 5,
         exp: 10,
@@ -54,7 +55,7 @@ const PET_FOODS = [
 	{
         id: "mega_food",
         name: "ขนมโดนัท",
-        price: 1250,
+        price: 1200, // 60 บาท/EXP (ลดจาก 1250) - bulk discount
         type: "food",
         feed: 10,
         exp: 20,
@@ -111,10 +112,10 @@ module.exports = {
 		// ตรวจสอบ cooldown
 		const cooldownRemaining = checkCooldown(interaction.user.id);
 		if (cooldownRemaining > 0) {
-			return interaction.editReply({ content: `⏰ คุณต้องรอ **${cooldownRemaining} วินาที** ก่อนที่จะเปิดร้านได้อีกครั้ง` });
+			return interaction.editReply({ embeds: [new EmbedBuilder().setColor(client.color).setDescription(`⏰ คุณต้องรอ **${cooldownRemaining} วินาที** ก่อนที่จะเปิดร้านได้อีกครั้ง`)] });
 		}
 
-		const msg = await interaction.editReply({ content: "Loading shop..." });
+		const msg = await interaction.editReply({ embeds: [new EmbedBuilder().setColor(client.color).setDescription("Loading shop...")] });
 
 		// เปิดเมนูเลือกประเภทร้าน
 		await openShopMenu(client, interaction, msg);
@@ -183,9 +184,7 @@ async function openShopMenu(client, interaction, msg) {
 					if (fetchError.code === 10008) {
 						console.error("Message no longer exists when opening shop, sending new message");
 						// Send a new message and open the shop there
-						const newMsg = await interaction.followUp({ 
-							content: "กำลังเปิดร้านค้า..." 
-						});
+						const newMsg = await interaction.followUp({ embeds: [new EmbedBuilder().setColor(client.color).setDescription("กำลังเปิดร้านค้า...")] });
 						
 						if (selectedCategory === 'food') {
 							await openFoodShop(client, interaction, newMsg);
@@ -207,7 +206,7 @@ async function openShopMenu(client, interaction, msg) {
 			} catch (error) {
 				console.error("Error in select menu collect:", error);
 				try {
-					await selectMenu.followUp({ content: "เกิดข้อผิดพลาดในการประมวลผลคำสั่ง" });
+					await selectMenu.followUp({ embeds: [new EmbedBuilder().setColor(client.color).setDescription("เกิดข้อผิดพลาดในการประมวลผลคำสั่ง")] });
 				} catch (followUpError) {
 					console.error("Error sending follow-up:", followUpError);
 				}
@@ -231,7 +230,7 @@ async function openShopMenu(client, interaction, msg) {
 	} catch (e) {
 		console.error("openShopMenu error:", e);
 		try { 
-			await actualMsg.edit({ content: "เกิดข้อผิดพลาด", components: [], files: [] }); 
+			await actualMsg.edit({ embeds: [new EmbedBuilder().setColor(client.color).setDescription("เกิดข้อผิดพลาด")], components: [], files: [] }); 
 		} catch (error) {
 			if (error.code !== 10008) {
 				console.error("Error editing message in openShopMenu:", error);
@@ -304,7 +303,7 @@ async function openCleaningShop(client, interaction, msg) {
 		}
 		await renderCleaningPage();
 		const nonOwnerCollector = msg.createMessageComponentCollector({ filter: (x) => x.user.id !== interaction.user.id, time: 5 * 60 * 1000 });
-		nonOwnerCollector.on('collect', async (menu) => { try { await menu.reply({ content: "เมนูนี้สำหรับผู้ที่เรียกคำสั่งเท่านั้น", flags: MessageFlags.Ephemeral }); } catch {} });
+		nonOwnerCollector.on('collect', async (menu) => { try { await menu.reply({ embeds: [new EmbedBuilder().setColor(client.color).setDescription("เมนูนี้สำหรับผู้ที่เรียกคำสั่งเท่านั้น")], flags: MessageFlags.Ephemeral }); } catch {} });
 
 		collector.on('collect', async (menu) => {
 			try {
@@ -324,25 +323,49 @@ async function openCleaningShop(client, interaction, msg) {
 				const item = CLEANING_ITEMS.find(x => x.id === itemId);
 				if (!item) return;
 				if ((profile?.money || 0) < item.price) { 
-					return menu.followUp({ content: `ยอดยอดเงินไม่พอ ราคา: ${item.price}`,  }); 
+					return menu.followUp({ embeds: [new EmbedBuilder().setColor(client.color).setDescription(`ยอดยอดเงินไม่พอ ราคา: ${item.price}`)] }); 
 				}
 				
-				profile.money -= item.price;
-				
-				// สร้างถุงขยะตามจำนวนที่ซื้อ
-				for (let i = 0; i < item.quantity; i++) {
-					inv.item.push({
-						id: generateID(),
-						name: `Trash Bag`,
-						type: item.type,
-						capacity: item.capacity,
-						used: 0,
-						emoji: item.emoji
-					});
-				}
-				
-				await profile.save(); 
-				await inv.save();
+                // ทำธุรกรรมแบบอะตอมมิก: หักเงินและเพิ่มของในครั้งเดียว
+                const session = await GProfile.startSession();
+                try {
+                    session.startTransaction();
+
+                    // หักเงิน (ตรวจสอบยอดเงินอีกรอบใน DB เพื่อกัน race)
+                    const updatedProfile = await GProfile.findOneAndUpdate(
+                        { guild: interaction.guild.id, user: interaction.user.id, money: { $gte: item.price } },
+                        { $inc: { money: -item.price } },
+                        { new: true, session }
+                    );
+                    if (!updatedProfile) {
+                        await session.abortTransaction();
+                        await session.endSession();
+                        return menu.followUp({ embeds: [new EmbedBuilder().setColor(client.color).setDescription(`ยอดเงินไม่พอ ราคา: ${item.price}`)] });
+                    }
+
+                    // เพิ่มไอเท็มที่ซื้อเข้าคลัง
+                    const newBags = Array.from({ length: item.quantity }, () => ({
+                        id: generateID(),
+                        name: `Trash Bag`,
+                        type: item.type,
+                        capacity: item.capacity,
+                        used: 0,
+                        emoji: item.emoji
+                    }));
+
+                    await GInv.updateOne(
+                        { guild: interaction.guild.id, user: interaction.user.id },
+                        { $push: { item: { $each: newBags } } },
+                        { upsert: true, session }
+                    );
+
+                    await session.commitTransaction();
+                    await session.endSession();
+                } catch (txErr) {
+                    try { await session.abortTransaction(); } catch {}
+                    try { await session.endSession(); } catch {}
+                    throw txErr;
+                }
 				
 				// อัปเดต cooldown
 				shopCooldowns.set(interaction.user.id, Date.now());
@@ -378,7 +401,7 @@ async function openCleaningShop(client, interaction, msg) {
 	} catch (e) {
 		console.error("openCleaningShop error:", e);
 		try { 
-			await msg.edit({ content: "เกิดข้อผิดพลาด", components: [], files: [] }); 
+			await msg.edit({ embeds: [new EmbedBuilder().setColor(client.color).setDescription("เกิดข้อผิดพลาด")], components: [], files: [] }); 
 		} catch (error) {
 			if (error.code !== 10008) {
 				console.error("Error editing message in openCleaningShop:", error);
@@ -451,7 +474,7 @@ async function openFoodShop(client, interaction, msg) {
 		}
 		await renderFoodPage();
 		const nonOwnerCollector = msg.createMessageComponentCollector({ filter: (x) => x.user.id !== interaction.user.id, time: 5 * 60 * 1000 });
-		nonOwnerCollector.on('collect', async (menu) => { try { await menu.reply({ content: "เมนูนี้สำหรับผู้ที่เรียกคำสั่งเท่านั้น", flags: MessageFlags.Ephemeral }); } catch {} });
+		nonOwnerCollector.on('collect', async (menu) => { try { await menu.reply({ embeds: [new EmbedBuilder().setColor(client.color).setDescription("เมนูนี้สำหรับผู้ที่เรียกคำสั่งเท่านั้น")], flags: MessageFlags.Ephemeral }); } catch {} });
 
 		collector.on('collect', async (menu) => {
 			try {
@@ -471,21 +494,49 @@ async function openFoodShop(client, interaction, msg) {
 				const food = PET_FOODS.find(x => x.id === foodId);
 				if (!food) return;
 				if ((profile?.money || 0) < food.price) { 
-					return menu.followUp({ content: `ยอดเงินไม่พอ ราคา: ${food.price}`,  }); 
+ 					return menu.followUp({ embeds: [new EmbedBuilder().setColor(client.color).setDescription(`ยอดเงินไม่พอ ราคา: ${food.price}`)] }); 
 				}
 				
-				profile.money -= food.price;
-				inv.item.push({
-					id: generateID(),
-					name: food.name,
-					type: food.type,
-					feed: food.feed,
-					exp: food.exp,
-					emoji: food.emoji
-				});
-				
-				await profile.save(); 
-				await inv.save();
+                // ทำธุรกรรมแบบอะตอมมิก: หักเงินและเพิ่มของในครั้งเดียว
+                const session = await GProfile.startSession();
+                try {
+                    session.startTransaction();
+
+                    // หักเงิน (ตรวจสอบยอดเงินอีกรอบใน DB เพื่อกัน race)
+                    const updatedProfile = await GProfile.findOneAndUpdate(
+                        { guild: interaction.guild.id, user: interaction.user.id, money: { $gte: food.price } },
+                        { $inc: { money: -food.price } },
+                        { new: true, session }
+                    );
+                    if (!updatedProfile) {
+                        await session.abortTransaction();
+                        await session.endSession();
+                        return menu.followUp({ embeds: [new EmbedBuilder().setColor(client.color).setDescription(`ยอดเงินไม่พอ ราคา: ${food.price}`)] });
+                    }
+
+                    // เพิ่มไอเท็มอาหารเข้าคลัง
+                    const newItem = {
+                        id: generateID(),
+                        name: food.name,
+                        type: food.type,
+                        feed: food.feed,
+                        exp: food.exp,
+                        emoji: food.emoji
+                    };
+
+                    await GInv.updateOne(
+                        { guild: interaction.guild.id, user: interaction.user.id },
+                        { $push: { item: newItem } },
+                        { upsert: true, session }
+                    );
+
+                    await session.commitTransaction();
+                    await session.endSession();
+                } catch (txErr) {
+                    try { await session.abortTransaction(); } catch {}
+                    try { await session.endSession(); } catch {}
+                    throw txErr;
+                }
 				
 				// อัปเดต cooldown
 				shopCooldowns.set(interaction.user.id, Date.now());
@@ -521,7 +572,7 @@ async function openFoodShop(client, interaction, msg) {
 	} catch (e) {
 		console.error("openFoodShop error:", e);
 		try { 
-			await msg.edit({ content: "เกิดข้อผิดพลาด", components: [], files: [] }); 
+			await msg.edit({ embeds: [new EmbedBuilder().setColor(client.color).setDescription("เกิดข้อผิดพลาด")], components: [], files: [] }); 
 		} catch (error) {
 			if (error.code !== 10008) {
 				console.error("Error editing message in openFoodShop:", error);

@@ -4,7 +4,8 @@ module.exports = async (client, oldState, newState) => {
     try {
         const guildId = newState.guild.id;
         const userId = newState.member.id;
-        const targetGuildId = '1169274513901486192';
+        const { GUILD_ID } = require('../../settings/config');
+        const targetGuildId = GUILD_ID;
         
         // ตรวจสอบว่าเป็น guild ที่ถูกต้อง
         if (guildId !== targetGuildId) return;

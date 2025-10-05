@@ -33,7 +33,7 @@ function resolveIdleGifUrl(petType) {
 
 module.exports = {
   name: ["รับสัตว์เลี้ยง"],
-  description: "Choose a free starter pet. (30 minute cooldown)",
+  description: "เลือกสัตว์เริ่มต้นฟรี (คูลดาวน์ 30 นาที)",
   category: "Pet",
   run: async (client, interaction) => {
     await interaction.deferReply({ ephemeral: false });
@@ -44,10 +44,20 @@ module.exports = {
         return interaction.editReply(`⏰ คุณต้องรอ **${cooldownRemaining} วินาที** ก่อนที่จะสร้างสัตว์เลี้ยงใหม่ได้อีกครั้ง`);
     }
 
-    const msg = await interaction.editReply("กำลังโหลดสัตว์เลี้ยง...");
+    const loadingEmbed = new EmbedBuilder()
+      .setTitle('กำลังโหลด')
+      .setDescription('กำลังโหลดสัตว์เลี้ยง...')
+      .setColor('#cccccc');
+    const msg = await interaction.editReply({ embeds: [loadingEmbed] });
 
     const hasPet = await GPet.findOne({ guild: interaction.guild.id, user: interaction.user.id });
-    if (hasPet) return msg.edit("คุณมีสัตว์เลี้ยงแล้ว!");
+    if (hasPet) {
+      const embedHasPet = new EmbedBuilder()
+        .setTitle('มีสัตว์เลี้ยงอยู่แล้ว')
+        .setDescription('คุณมีสัตว์เลี้ยงแล้ว!')
+        .setColor('#ffcc00');
+      return msg.edit({ embeds: [embedHasPet] });
+    }
 
     const object = Object.values(pet);
 
@@ -88,7 +98,12 @@ module.exports = {
       // ห้าม deferUpdate ก่อน showModal เพราะจะทำให้ interaction ถูกตอบไปแล้ว
       const [directory] = menu.values;
       const item = pet.find(x => x.type === directory);
-      if (!item) return menu.followUp({ content: 'ไม่พบชนิดสัตว์นี้', ephemeral: true });
+      if (!item) {
+        const notFound = new EmbedBuilder()
+          .setTitle('ไม่พบชนิดสัตว์นี้')
+          .setColor('#ff6961');
+        return menu.followUp({ embeds: [notFound], ephemeral: true });
+      }
 
       // เปิดโมดอล ตั้งชื่อเล่น
       const modal = new ModalBuilder().setCustomId('pet_starter_modal').setTitle('ตั้งชื่อสัตว์เลี้ยง');
@@ -109,7 +124,13 @@ module.exports = {
 
         const nickname = String(submitted.fields.getTextInputValue('nickname') || '').trim();
         const isValid = /^[A-Za-z]{1,10}$/.test(nickname);
-        if (!isValid) return submitted.reply({ content: 'ชื่อเล่นต้องเป็นภาษาอังกฤษเท่านั้น และไม่เกิน 10 ตัวอักษร', ephemeral: true });
+        if (!isValid) {
+          const invalid = new EmbedBuilder()
+            .setTitle('ชื่อเล่นไม่ถูกต้อง')
+            .setDescription('ชื่อเล่นต้องเป็นภาษาอังกฤษเท่านั้น และไม่เกิน 10 ตัวอักษร')
+            .setColor('#ff6961');
+          return submitted.reply({ embeds: [invalid], ephemeral: true });
+        }
 
         // ไม่หักเงิน สร้างสัตว์พร้อม GIF URL และชื่อเล่น
         const idleGifUrl = resolveIdleGifUrl(item.type);
@@ -133,14 +154,22 @@ module.exports = {
         // อัปเดต cooldown
         starterCooldowns.set(interaction.user.id, Date.now());
         
-        await submitted.reply({ content: `รับสัตว์เลี้ยงเริ่มต้นสำเร็จ: ${toOppositeCase(item.name)} • ตั้งชื่อว่า "${nickname}"`, ephemeral: true });
+        const doneEphemeral = new EmbedBuilder()
+          .setTitle('รับสัตว์เลี้ยงสำเร็จ')
+          .setDescription(`รับสัตว์เลี้ยงเริ่มต้นสำเร็จ: ${toOppositeCase(item.name)} • ตั้งชื่อว่า "${nickname}"`)
+          .setColor('#00cc66');
+        await submitted.reply({ embeds: [doneEphemeral], ephemeral: true });
 
         const done = new EmbedBuilder().setColor(client.color).setDescription(`คุณได้รับสัตว์เลี้ยงฟรี: ${toOppositeCase(item.name)} \nตั้งชื่อเป็น: **${nickname}**`);
         await msg.edit({ embeds: [done], components: [], files: [] });
         collector.stop();
         try { nonOwnerCollector.stop(); } catch {}
       } catch (_) {
-        await msg.edit({ content: 'หมดเวลาตั้งชื่อ โปรดลองใหม่อีกครั้ง', components: [], files: [] });
+        const timeout = new EmbedBuilder()
+          .setTitle('หมดเวลา')
+          .setDescription('หมดเวลาตั้งชื่อ โปรดลองใหม่อีกครั้ง')
+          .setColor('#ff6961');
+        await msg.edit({ embeds: [timeout], components: [], files: [] });
         collector.stop();
         try { nonOwnerCollector.stop(); } catch {}
       }
