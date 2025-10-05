@@ -342,10 +342,10 @@ function drawStatusBars(ctx, pet) {
   ctx.fillStyle = "#eeb32e";
   ctx.fillRect(92, 20, expbar, 14);
   const fontFamilySafe = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
-  ctx.font = `bold 12px 'sans-serif'`;
+  ctx.font = `bold 14px 'sans-serif'`;
   ctx.fillStyle = "#FFFFFF";
   ctx.fillText(`LV: ${pet.level}`, 92, 30);
-  ctx.font = `bold 12px 'sans-serif'`;
+  ctx.font = `bold 14px 'sans-serif'`;
   ctx.fillStyle = "#FFFFFF";
   ctx.fillText(`XP: ${expbar2 || "0"}%`, 190, 30);
 
