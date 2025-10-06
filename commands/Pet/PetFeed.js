@@ -186,9 +186,10 @@ async function processFeedAction(client, interaction, msg, itemId, inv) {
         // ดึงข้อมูลอาหารที่เลือก
         const selectedFood = inv.item.find(x => x.id === itemId);
         const expBonus = selectedFood?.exp || 1; // EXP จากอาหาร (default 1 ถ้าไม่มี)
-        
-        // ใช้ระบบพฤติกรรมสัตว์เลี้ยงใหม่ พร้อมส่ง EXP bonus
-        const result = await petBehaviorSystem.processPlayerAction(pet._id, 'feed', { expBonus });
+        const feedAmount = selectedFood?.feed || 0; // ค่าความอิ่มตามที่ร้านค้ากำหนด
+
+        // ใช้ระบบพฤติกรรมสัตว์เลี้ยงใหม่ พร้อมส่ง EXP bonus และ feedAmount ให้ตรงกับร้านค้า
+        const result = await petBehaviorSystem.processPlayerAction(pet._id, 'feed', { expBonus, feedAmount });
         
         if (!result.success) {
             const embedErr = new EmbedBuilder()
@@ -261,6 +262,15 @@ async function processFeedAction(client, interaction, msg, itemId, inv) {
         });
 
         await msg.edit({ embeds: [embed], components: [] });
+        if (result.leveledUp) {
+            try {
+                const lvlEmbed = new EmbedBuilder()
+                    .setColor('#c9ce93')
+                    .setTitle('🎉 Level Up!')
+                    .setDescription(`${interaction.user} สัตว์เลี้ยงเลเวลอัปเป็นเลเวล **${result.level}**!`);
+                await interaction.followUp({ embeds: [lvlEmbed], ephemeral: false });
+            } catch {}
+        }
 
     } catch (error) {
         console.error('Error in processFeedAction:', error);
