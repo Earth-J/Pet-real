@@ -27,7 +27,7 @@ function initVoiceMoneySystem() {
                 const timeSpent = Math.floor((now - joinTime) / 1000 / 60);
 
                 if (timeSpent >= 1) {
-                    const moneyToGive = timeSpent * 25;
+                    const moneyToGive = timeSpent * 10;
 
                     await withUserLock(userData.guildId, userId, async () => {
                         await GProfile.findOneAndUpdate(
