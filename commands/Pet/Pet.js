@@ -25,54 +25,36 @@ function buildInfoEmbed(description, color = '#e8f093', title) {
   return emb;
 }
 
-// ลงทะเบียนฟอนต์สำหรับการ์ด (รองรับไทย) จาก CDN พร้อม fallback เป็นไฟล์ภายในโปรเจกต์
-let THAI_FONT_READY = false;
-const STATUS_FONT_FAMILY = process.env.PET_STATUS_FONT_FAMILY || 'Gotham Rnd SSm';
-const REMOTE_FONT_URL = 'https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/gothamrndssm_light.otf';
-async function registerRemoteThaiFont() {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), 2500);
-  try {
-    const res = await fetch(REMOTE_FONT_URL, { signal: controller.signal });
-    if (!res.ok) return false;
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (GlobalFonts && typeof GlobalFonts.registerFromBuffer === 'function') {
-      GlobalFonts.registerFromBuffer(buf, STATUS_FONT_FAMILY);
+// ลงทะเบียนฟอนต์ Gotham Rounded SSm Light จาก CDN พร้อม fallback เป็นไฟล์ภายในโปรเจกต์
+const DEFAULT_FONT_FAMILY = "Gotham Rnd SSm";
+const REMOTE_FONT_URL = "https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/gothamrndssm_light.otf";
+
+async function registerRemoteFont() {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 2500);
+    try {
+        const res = await fetch(REMOTE_FONT_URL, { signal: controller.signal });
+        if (!res.ok) throw new Error(`font http ${res.status}`);
+        const buf = Buffer.from(await res.arrayBuffer());
+        GlobalFonts.registerFromBuffer(buf, DEFAULT_FONT_FAMILY);
+        return true;
+    } catch (_) {
+        return false; // จะไปใช้ fallback ด้านล่าง
+    } finally {
+        clearTimeout(id);
     }
-    THAI_FONT_READY = true;
-    return true;
-  } catch (_) {
-    return false;
-  } finally {
-    clearTimeout(id);
-  }
 }
-// พยายามลงทะเบียนจาก CDN เมื่อโหลดไฟล์ครั้งแรก
+
 (async () => {
-  try {
-    if (!THAI_FONT_READY) {
-      await registerRemoteThaiFont();
-    }
-  } catch (_) { /* ignore */ }
-})();
-function ensureThaiFontRegistered() {
-  if (THAI_FONT_READY) return;
-  try {
-    const fontCandidates = [
-      path.join(__dirname, '../../assests/fonts/gothamrndssm_light.otf'),
-      path.join(process.cwd(), 'assests/fonts/gothamrndssm_light.otf'),
-    ];
-    for (const fp of fontCandidates) {
-      if (fs.existsSync(fp)) {
-        if (GlobalFonts && typeof GlobalFonts.registerFromPath === 'function') {
-          GlobalFonts.registerFromPath(fp, STATUS_FONT_FAMILY);
+    const ok = await registerRemoteFont();
+    if (!ok) {
+        try {
+            GlobalFonts.registerFromPath(path.resolve("./assests/fonts/gothamrndssm_light.otf"), DEFAULT_FONT_FAMILY);
+        } catch (_) {
+            // ignore if not found; will fallback to platform fonts
         }
-        THAI_FONT_READY = true;
-        break;
-      }
     }
-  } catch (_) { /* ignore font errors */ }
-}
+})();
 
 // ปรับความเร็ว GIF ได้ผ่าน env PET_GIF_DELAY_MS (ms ต่อเฟรม), ค่าเริ่มต้น 210
 const PET_GIF_DELAY_MS = parseInt(process.env.PET_GIF_DELAY_MS || '210');
@@ -304,11 +286,8 @@ function drawCenterStatus(ctx, text) {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  // ใช้ฟอนต์ไทย ถ้าลงทะเบียนได้ สำรองเป็น sans-serif
-  ensureThaiFontRegistered(); // ตรวจสอบและลงทะเบียนฟอนต์ก่อนใช้
-  const fontFamily = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
   const fontSize = parseInt(process.env.PET_STATUS_FONT_SIZE || '12');
-  ctx.font = `bold ${fontSize}px '${fontFamily}'`;
+  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
   // เงาบางๆ ให้ตัวอักษรอ่านง่าย
   ctx.fillStyle = '#FFFFFF';
   ctx.fillText(text, centerX, statusY + 1);
@@ -344,12 +323,10 @@ function drawStatusBars(ctx, pet) {
   // EXP + LV/XP%
   ctx.fillStyle = "#eeb32e";
   ctx.fillRect(92, 20, expbar, 14);
-  ensureThaiFontRegistered(); // ตรวจสอบและลงทะเบียนฟอนต์ก่อนใช้
-  const fontFamilySafe = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
-  ctx.font = `bold 12px '${fontFamilySafe}'`;
+  ctx.font = "bold 12px 'Gotham Rnd SSm'";
   ctx.fillStyle = "#090909";
   ctx.fillText(`LV: ${pet.level}`, 92, 30);
-  ctx.font = `bold 12px '${fontFamilySafe}'`;
+  ctx.font = "bold 12px 'Gotham Rnd SSm'";
   ctx.fillStyle = "#090909";
   ctx.fillText(`XP: ${expbar2 || "0"}%`, 190, 30);
 
@@ -533,15 +510,13 @@ async function makeSolidPngDataUrl(color = '#ffffff', width = 300, height = 300)
 
 // สร้าง PNG ป้ายชื่อสำหรับวางบนหัว pet และคืนทั้ง URL และขนาด
 async function makeNameTagDataUrl(text) {
-  ensureThaiFontRegistered();
   const paddingX = 6;
   const paddingY = 3;
   const fontSize = 12;
-  const fontFamily = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
   // วัดความกว้างข้อความ
   let c = Canvas.createCanvas(1, 1);
   let ctx = c.getContext('2d');
-  ctx.font = `bold ${fontSize}px '${fontFamily}'`;
+  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
   const metrics = ctx.measureText(String(text || ''));
   const textW = Math.ceil(metrics.width);
   const textH = Math.ceil(fontSize + 2);
@@ -569,7 +544,7 @@ async function makeNameTagDataUrl(text) {
   ctx.fill();
   ctx.restore();
   // ข้อความสีขาว + เงาดำบางๆ
-  ctx.font = `bold ${fontSize}px '${fontFamily}'`;
+  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#FFFFFF';
