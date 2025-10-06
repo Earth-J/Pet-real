@@ -45,17 +45,47 @@ async function registerRemoteFont() {
     }
 }
 
+// ลงทะเบียนฟอนต์หลัก (Minecraft) และฟอนต์รองสำหรับ NameTag (Gotham Rnd SSm)
 (async () => {
     const ok = await registerRemoteFont();
-    console.log('Font registration from CDN:', ok);
+    console.log('Font registration from CDN (Minecraft):', ok);
     if (!ok) {
         try {
             GlobalFonts.registerFromPath(path.resolve("./assests/fonts/Minecraft.ttf"), DEFAULT_FONT_FAMILY);
-            console.log('Font registration from local file: success');
+            console.log('Font registration from local file (Minecraft): success');
         } catch (e) {
-            console.log('Font registration from local file failed:', e.message);
+            console.log('Font registration from local file (Minecraft) failed:', e.message);
             // ignore if not found; will fallback to platform fonts
         }
+    }
+
+    // พยายามลงทะเบียน Gotham Rnd SSm สำหรับป้ายชื่อ (name tag)
+    try {
+        const gothamUrl = "https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/gothamrndssm_light.otf";
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 2500);
+        try {
+            const res = await fetch(gothamUrl, { signal: controller.signal });
+            if (res.ok) {
+                const buf = Buffer.from(await res.arrayBuffer());
+                GlobalFonts.registerFromBuffer(buf, "Gotham Rnd SSm");
+                console.log('Font registration from CDN (Gotham): success');
+            } else {
+                throw new Error(`font http ${res.status}`);
+            }
+        } catch (e) {
+            // fallback local
+            try {
+                GlobalFonts.registerFromPath(path.resolve("./assests/fonts/gothamrndssm_light.otf"), "Gotham Rnd SSm");
+                console.log('Font registration from local file (Gotham): success');
+            } catch (ee) {
+                console.log('Font registration (Gotham) failed, will rely on fallback:', ee.message);
+            }
+        } finally {
+            clearTimeout(id);
+        }
+    } catch (_) {
+        // ignore any font registration errors
     }
 })();
 
@@ -536,9 +566,9 @@ async function makeNameTagDataUrl(text) {
   let c = Canvas.createCanvas(1, 1);
   let ctx = c.getContext('2d');
   
-  // ทดสอบฟอนต์
+  // ใช้ Gotham Rnd SSm สำหรับการวัดความกว้างป้ายชื่อ
   try {
-    ctx.font = `bold ${fontSize}px 'Minecraft', sans-serif`;
+    ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm', sans-serif`;
     console.log('Name tag font (measure):', ctx.font);
   } catch (e) {
     console.log('Name tag font error (measure), using fallback:', e.message);
@@ -571,9 +601,9 @@ async function makeNameTagDataUrl(text) {
   ctx.closePath();
   ctx.fill();
   ctx.restore();
-  // ข้อความสีขาว + เงาดำบางๆ
+  // ข้อความสีขาว + เงาดำบางๆ ใช้ Gotham Rnd SSm เสมอ
   try {
-    ctx.font = `bold ${fontSize}px 'Minecraft', sans-serif`;
+    ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm', sans-serif`;
     console.log('Name tag font (draw):', ctx.font);
   } catch (e) {
     console.log('Name tag font error (draw), using fallback:', e.message);
