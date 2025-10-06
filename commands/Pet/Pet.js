@@ -25,9 +25,9 @@ function buildInfoEmbed(description, color = '#e8f093', title) {
   return emb;
 }
 
-// ลงทะเบียนฟอนต์ Gotham Rounded SSm Light จาก CDN พร้อม fallback เป็นไฟล์ภายในโปรเจกต์
-const DEFAULT_FONT_FAMILY = "Gotham Rnd SSm";
-const REMOTE_FONT_URL = "https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/gothamrndssm_light.otf";
+// ลงทะเบียนฟอนต์ Minecraft จาก CDN พร้อม fallback เป็นไฟล์ภายในโปรเจกต์
+const DEFAULT_FONT_FAMILY = "Minecraft";
+const REMOTE_FONT_URL = "https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/Minecraft.ttf";
 
 async function registerRemoteFont() {
     const controller = new AbortController();
@@ -50,7 +50,7 @@ async function registerRemoteFont() {
     console.log('Font registration from CDN:', ok);
     if (!ok) {
         try {
-            GlobalFonts.registerFromPath(path.resolve("./assests/fonts/gothamrndssm_light.otf"), DEFAULT_FONT_FAMILY);
+            GlobalFonts.registerFromPath(path.resolve("./assests/fonts/Minecraft.ttf"), DEFAULT_FONT_FAMILY);
             console.log('Font registration from local file: success');
         } catch (e) {
             console.log('Font registration from local file failed:', e.message);
@@ -293,7 +293,7 @@ function drawCenterStatus(ctx, text) {
   
   // ทดสอบฟอนต์หลายแบบ
   try {
-    ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm', sans-serif`;
+    ctx.font = `bold ${fontSize}px 'Minecraft', sans-serif`;
     console.log('Using font:', ctx.font);
   } catch (e) {
     console.log('Font error, using fallback:', e.message);
@@ -338,7 +338,7 @@ function drawStatusBars(ctx, pet) {
   
   // ทดสอบฟอนต์
   try {
-    ctx.font = "bold 12px 'Gotham Rnd SSm', sans-serif";
+    ctx.font = "bold 12px 'Minecraft', sans-serif";
     console.log('Status bar font:', ctx.font);
   } catch (e) {
     console.log('Status bar font error, using fallback:', e.message);
@@ -538,7 +538,7 @@ async function makeNameTagDataUrl(text) {
   
   // ทดสอบฟอนต์
   try {
-    ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm', sans-serif`;
+    ctx.font = `bold ${fontSize}px 'Minecraft', sans-serif`;
     console.log('Name tag font (measure):', ctx.font);
   } catch (e) {
     console.log('Name tag font error (measure), using fallback:', e.message);
@@ -573,7 +573,7 @@ async function makeNameTagDataUrl(text) {
   ctx.restore();
   // ข้อความสีขาว + เงาดำบางๆ
   try {
-    ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm', sans-serif`;
+    ctx.font = `bold ${fontSize}px 'Minecraft', sans-serif`;
     console.log('Name tag font (draw):', ctx.font);
   } catch (e) {
     console.log('Name tag font error (draw), using fallback:', e.message);
