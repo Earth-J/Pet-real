@@ -160,8 +160,8 @@ class PetSleepSystem {
                 };
             }
 
-            // สุ่มเวลานอน 5-10 นาที
-            const sleepDuration = durationMinutes || (5 + Math.floor(Math.random() * 6)); // 5-10 นาที
+            // สุ่มเวลานอน 10-15 นาที
+            const sleepDuration = durationMinutes || (10 + Math.floor(Math.random() * 6)); // 10-15 นาที
 
             // บันทึกข้อมูลการนอน
             const sleepData = {
@@ -221,18 +221,25 @@ class PetSleepSystem {
             const fatigueReduction = pet.fatigue; // เพื่อนำไปแสดงผล
             const newFatigue = 0;
 
-            // เพิ่ม EXP จากการนอน
-            const expGain = 4; // Sleep ให้ EXP +4 ตาม balance
+            // เพิ่ม EXP จากการนอน: สเกลตามเวลานอนจริงและระดับความล้าก่อนนอน
+            const { petBehaviorSystem } = require("./PetBehaviorSystem");
+            const fatigueBefore = Number(pet.fatigue || 0);
+            // ฐาน EXP ต่อ 5 นาที = 10, ต่อ 15 นาที = 30 (เชิงเส้น)
+            const basePerMinute = 2; // 10 EXP ต่อ 5 นาที -> 2 ต่อ 1 นาที
+            const timeExp = Math.round(basePerMinute * Math.max(1, sleepTimeMinutes));
+            // โบนัสจากความล้าที่มากขึ้น (0..+50%)
+            const fatigueBonusMultiplier = 1 + Math.min(0.5, fatigueBefore / 40); // fatigue 20 → +50%
+            const expGain = Math.max(1, Math.floor(timeExp * fatigueBonusMultiplier));
             let exp = Number(pet.exp || 0) + expGain;
             let level = Number(pet.level || 1);
-            let nextexp = Number(pet.nextexp || Math.floor(level * level * 1.5));
+            let nextexp = Number(pet.nextexp || petBehaviorSystem.computeNextExp(level));
             let leveledUp = false;
 
             // ตรวจสอบ level up
             while (exp >= nextexp) {
                 const diff = exp - nextexp;
                 level += 1;
-                nextexp = Math.floor(level * level * 1.5);
+                nextexp = petBehaviorSystem.computeNextExp(level);
                 exp = diff;
                 leveledUp = true;
                 console.log(`[PET_SLEEP] Pet ${petId} leveled up to ${level} after waking up!`);
