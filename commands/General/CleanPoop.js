@@ -24,25 +24,8 @@ function checkCooldown(userId) {
     return 0;
 }
 
-// พิกัดสล็อตบ้าน (คัดลอกจาก Pet.js)
-const SLOT_DRAWS = {
-  A4: { x: 119, y: 24,  w: 102, h: 149 },
-  A3: { x: 82,  y: 42,  w: 102, h: 149 },
-  A2: { x: 45,  y: 61,  w: 102, h: 149 },
-  A1: { x: 8,   y: 79,  w: 102, h: 149 },
-  B4: { x: 155, y: 41,  w: 102, h: 149 },
-  B3: { x: 118, y: 60,  w: 102, h: 149 },
-  B2: { x: 81,  y: 79,  w: 102, h: 149 },
-  B1: { x: 44,  y: 97,  w: 102, h: 149 },
-  C4: { x: 191, y: 59,  w: 102, h: 149 },
-  C3: { x: 154, y: 78,  w: 102, h: 149 },
-  C2: { x: 117, y: 96,  w: 102, h: 149 },
-  C1: { x: 80,  y: 114, w: 102, h: 149 },
-  D4: { x: 227, y: 77,  w: 102, h: 149 },
-  D3: { x: 190, y: 95,  w: 102, h: 149 },
-  D2: { x: 153, y: 113, w: 102, h: 149 },
-  D1: { x: 116, y: 131, w: 102, h: 149 },
-};
+// ใช้ค่ากลางของพิกัดสล็อต poop
+const { SLOT_DRAWS, SLOT_ORDER } = require("../../structures/constants/poopSlots");
 
 // ตรวจว่าสล็อตถูกครอบครองหรือไม่
 function isSlotOccupied(home, slot) {
@@ -63,13 +46,7 @@ function isSlotDisabled(home, slot) {
 
 // หาสล็อตที่มี poop จากฐานข้อมูล
 function findPoopSlots(home) {
-  const SLOT_Z_ORDER = [
-    'A4','A3','A2','A1',
-    'B4','B3','B2','B1',
-    'C4','C3','C2','C1',
-    'D4','D3','D2','D1',
-  ];
-  
+  const SLOT_Z_ORDER = SLOT_ORDER;
   // อ่านข้อมูล poop จากฐานข้อมูล
   const poopSlots = [];
   for (const slot of SLOT_Z_ORDER) {
