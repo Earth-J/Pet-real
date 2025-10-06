@@ -331,9 +331,7 @@ function drawCenterStatus(ctx, text) {
   }
   
   // เงาบางๆ ให้ตัวอักษรอ่านง่าย
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(text, centerX, statusY + 1);
-  ctx.fillStyle = '#000000';
+  ctx.fillStyle = '#2c2c2c';
   ctx.fillText(text, centerX, statusY);
   ctx.restore();
 }
