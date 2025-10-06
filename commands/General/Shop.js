@@ -28,7 +28,7 @@ const PET_FOODS = [
     {
         id: "basic_food",
         name: "อาหารเม็ดคุณภาพเเย่",
-        price: 150, // 75 บาท/EXP (ลดจาก 300)
+        price: 300, // 75 บาท/EXP (ลดจาก 300)
         type: "food",
         feed: 1,
         exp: 2,
@@ -37,7 +37,7 @@ const PET_FOODS = [
     {
         id: "premium_food",
         name: "อาหารเม็ดคุณภาพดี",
-        price: 350, // 70 บาท/EXP (ลดจาก 500)
+        price: 500, // 70 บาท/EXP (ลดจาก 500)
         type: "food",
         feed: 2,
         exp: 5,
@@ -46,7 +46,7 @@ const PET_FOODS = [
     {
         id: "deluxe_food",
         name: "ทาโก้",
-        price: 650, // 65 บาท/EXP (ลดจาก 700)
+        price: 700, // 65 บาท/EXP (ลดจาก 700)
         type: "food",
         feed: 5,
         exp: 10,
@@ -55,7 +55,7 @@ const PET_FOODS = [
 	{
         id: "mega_food",
         name: "ขนมโดนัท",
-        price: 1200, // 60 บาท/EXP (ลดจาก 1250) - bulk discount
+        price: 1250, // 60 บาท/EXP (ลดจาก 1250) - bulk discount
         type: "food",
         feed: 10,
         exp: 20,
