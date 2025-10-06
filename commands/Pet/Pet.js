@@ -375,7 +375,7 @@ function drawStatusBars(ctx, pet) {
     ctx.font = "bold 12px sans-serif";
   }
   
-  ctx.fillStyle = "#090909";
+  ctx.fillStyle = "#2c2c2c";
   ctx.fillText(`LV: ${pet.level}`, 92, 30);
   ctx.fillText(`XP: ${expbar2 || "0"}%`, 190, 30);
 
