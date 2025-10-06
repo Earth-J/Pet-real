@@ -556,13 +556,12 @@ async function makeNameTagDataUrl(text) {
 // เรนเดอร์การ์ดสัตว์เลี้ยงและคืน buffer พร้อม format (ใช้ใน-flight de-dup)
 async function renderPetCardBuffer(pet, state, poseKey) {
   // เตรียม canvas + HUD
-        const canvas = Canvas.createCanvas(270, 110);
-        const ctx = canvas.getContext("2d");
-        const profile = await PROFILE_IMG_PROMISE;
-        if (profile) {
-          ctx.drawImage(profile, 0, 0, canvas.width, canvas.height);
-        }
-        ensureThaiFontRegistered();
+  const canvas = Canvas.createCanvas(270, 110);
+  const ctx = canvas.getContext("2d");
+  const profile = await PROFILE_IMG_PROMISE;
+  if (profile) {
+    ctx.drawImage(profile, 0, 0, canvas.width, canvas.height);
+  }
 
   // พรีเรนเดอร์ HUD (พื้นหลัง + บาร์ + ข้อความ)
           const hudCanvas = Canvas.createCanvas(canvas.width, canvas.height);
@@ -734,11 +733,11 @@ async function renderPetCardBuffer(pet, state, poseKey) {
               }
 
               const pngBuf = await canvas.encode('png');
-    return { format: 'png', buffer: pngBuf };
+              return { format: 'png', buffer: pngBuf };
             } catch (_) {
-    return null;
-          }
-        }
+              return null;
+            }
+}
 
 // เรนเดอร์บ้านเป็น GIF attachment (ทำงานฉากหลัง)
 async function renderHouseAttachment(home, pet, state, poseKey) {
@@ -1079,9 +1078,15 @@ async function execute(client, interaction) {
       cardPromise = inFlightCards.get(cardKey);
     } else {
       const p = (async () => {
-        const out = await renderPetCardBuffer(pet, state, poseKey);
-        if (out) cardCache.set(cardKey, out, PET_CARD_TTL_MS);
-        return out;
+        try {
+          const out = await renderPetCardBuffer(pet, state, poseKey);
+          if (out) cardCache.set(cardKey, out, PET_CARD_TTL_MS);
+          return out;
+        } catch (error) {
+          console.error('Error in renderPetCardBuffer promise:', error);
+          console.error('Pet data:', { type: pet?.type, state, poseKey });
+          throw error;
+        }
       })();
       inFlightCards.set(cardKey, p);
       cardPromise = p.finally(() => inFlightCards.delete(cardKey));
@@ -1165,17 +1170,19 @@ async function execute(client, interaction) {
     }
   } catch (error) {
       console.error('Error rendering pet:', error);
+      console.error('Error stack:', error.stack);
+      console.error('Error message:', error.message);
       try {
         // ตรวจสอบว่า interaction ยังใช้งานได้หรือไม่
         if (interaction.replied || interaction.deferred) {
           if (error.message === 'RENDER_TIMEOUT') {
             await interaction.editReply({ embeds: [buildInfoEmbed('⏰ การสร้าง pet card ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง', '#e67e22', 'หมดเวลา')], files: [] });
           } else {
-            await interaction.editReply({ embeds: [buildInfoEmbed('❌ เกิดข้อผิดพลาดในการสร้าง pet card กรุณาลองใหม่อีกครั้ง', '#e74c3c', 'ข้อผิดพลาด')], files: [] });
+            await interaction.editReply({ embeds: [buildInfoEmbed(`❌ เกิดข้อผิดพลาดในการสร้าง pet card: ${error.message}`, '#e74c3c', 'ข้อผิดพลาด')], files: [] });
           }
         } else {
           // ถ้า interaction ยังไม่ได้ reply ให้ reply ใหม่
-          await interaction.reply({ embeds: [buildInfoEmbed('❌ เกิดข้อผิดพลาดในการสร้าง pet card กรุณาลองใหม่อีกครั้ง', '#e74c3c', 'ข้อผิดพลาด')], ephemeral: true });
+          await interaction.reply({ embeds: [buildInfoEmbed(`❌ เกิดข้อผิดพลาดในการสร้าง pet card: ${error.message}`, '#e74c3c', 'ข้อผิดพลาด')], ephemeral: true });
         }
       } catch (editError) {
         console.error('Failed to edit message:', editError);
