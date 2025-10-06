@@ -15,7 +15,7 @@ const pet = Schema({
         type: Number,
         default: 1
     },
-    nextexp: Number,
+    nextexp: { type: Number, default: 100 },
     // ค่ารุ่นเก่า (คงไว้เพื่อ backward compatibility)
     health: { type: Number, default: 20 },
     hungry: { type: Number, default: 20 },
