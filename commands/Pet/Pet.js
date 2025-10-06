@@ -305,9 +305,10 @@ function drawCenterStatus(ctx, text) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   // ใช้ฟอนต์ไทย ถ้าลงทะเบียนได้ สำรองเป็น sans-serif
+  ensureThaiFontRegistered(); // ตรวจสอบและลงทะเบียนฟอนต์ก่อนใช้
   const fontFamily = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
   const fontSize = parseInt(process.env.PET_STATUS_FONT_SIZE || '12');
-  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
+  ctx.font = `bold ${fontSize}px '${fontFamily}'`;
   // เงาบางๆ ให้ตัวอักษรอ่านง่าย
   ctx.fillStyle = '#FFFFFF';
   ctx.fillText(text, centerX, statusY + 1);
@@ -343,11 +344,12 @@ function drawStatusBars(ctx, pet) {
   // EXP + LV/XP%
   ctx.fillStyle = "#eeb32e";
   ctx.fillRect(92, 20, expbar, 14);
+  ensureThaiFontRegistered(); // ตรวจสอบและลงทะเบียนฟอนต์ก่อนใช้
   const fontFamilySafe = THAI_FONT_READY ? STATUS_FONT_FAMILY : 'sans-serif';
-  ctx.font = `bold 12px 'Gotham Rnd SSm'`;
+  ctx.font = `bold 12px '${fontFamilySafe}'`;
   ctx.fillStyle = "#090909";
   ctx.fillText(`LV: ${pet.level}`, 92, 30);
-  ctx.font = `bold 12px 'Gotham Rnd SSm'`;
+  ctx.font = `bold 12px '${fontFamilySafe}'`;
   ctx.fillStyle = "#090909";
   ctx.fillText(`XP: ${expbar2 || "0"}%`, 190, 30);
 
@@ -514,7 +516,7 @@ async function makeEmojiPngDataUrl(emoji) {
   ctx.clearRect(0, 0, size, size);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = `bold ${Math.floor(size * 0.8)}px 'Gotham Rnd SSm'`;
+  ctx.font = `bold ${Math.floor(size * 0.8)}px 'sans-serif'`;
   ctx.fillText(emoji, size / 2, size / 2 + 2);
   const buf = await c.encode('png');
   return `data:image/png;base64,${Buffer.from(buf).toString('base64')}`;
@@ -539,7 +541,7 @@ async function makeNameTagDataUrl(text) {
   // วัดความกว้างข้อความ
   let c = Canvas.createCanvas(1, 1);
   let ctx = c.getContext('2d');
-  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
+  ctx.font = `bold ${fontSize}px '${fontFamily}'`;
   const metrics = ctx.measureText(String(text || ''));
   const textW = Math.ceil(metrics.width);
   const textH = Math.ceil(fontSize + 2);
@@ -567,7 +569,7 @@ async function makeNameTagDataUrl(text) {
   ctx.fill();
   ctx.restore();
   // ข้อความสีขาว + เงาดำบางๆ
-  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
+  ctx.font = `bold ${fontSize}px '${fontFamily}'`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#FFFFFF';
