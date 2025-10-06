@@ -5,6 +5,7 @@ const GInv = require("../../settings/models/inventory.js");
 const { getRenderQueue } = require("../../structures/services/renderQueueSingleton");
 const { fetchBuffer } = require("../../structures/services/discordUpload");
 const { updateFireStreak } = require("../../handlers/FireStreakHandler");
+const { petBehaviorSystem } = require("../../handlers/PetBehaviorSystem");
 
 // Cooldown system
 const cleanPoopCooldowns = new Map();
@@ -275,6 +276,27 @@ module.exports = {
       // บันทึก inventory
       await inventory.save();
 
+      // คำนวณและอัปเดต EXP/Level/Nextexp ให้ถูกต้องตามสูตรเดียวกับระบบหลัก
+      const petDoc = await GPet.findOne({ _id: pet._id });
+      // EXP จากการเก็บขี้: เท่ากับจำนวนที่เก็บได้
+      const gain = Math.max(0, Number(collectedPoop || 0));
+      let exp = Number(petDoc?.exp || 0) + gain;
+      let level = Number(petDoc?.level || 1);
+      let nextexp = Number(petDoc?.nextexp || petBehaviorSystem.computeNextExp(level));
+      let leveledUp = false;
+
+      while (exp >= nextexp) {
+        exp = exp - nextexp;
+        level += 1;
+        nextexp = petBehaviorSystem.computeNextExp(level);
+        leveledUp = true;
+      }
+
+      await GPet.updateOne(
+        { _id: pet._id },
+        { $set: { exp, level, nextexp } }
+      );
+
       // เรนเดอร์บ้านที่สะอาดแล้ว
       const cleanHouseBuffer = await renderCleanHouse(home);
       
@@ -289,20 +311,25 @@ module.exports = {
           .setAuthor({ name: `${interaction.user.username}'s เก็บขี้สัตว์เลี้ยง`, iconURL: interaction.user.avatarURL() })
           .setColor(client.color)
           .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/clean-poop.png")
-          .setDescription(`🧹 ทำความสะอาดบ้านเรียบร้อย! เก็บขี้ได้ ${collectedPoop} ก้อน${trashBagMessage}\n<:exp:1424394377555607592> EXP : ${result.exp}/${result.nextexp} (+${collectedPoop})\n\n💡 **หมายเหตุ**: ใช้ \`/สัตว์เลี้ยง อาบน้ำ\` เพื่อทำความสะอาดสัตว์เลี้ยงโดยตรง`)
+          .setDescription(`🧹 ทำความสะอาดบ้านเรียบร้อย! เก็บขี้ได้ ${collectedPoop} ก้อน${trashBagMessage}\n<:exp:1424394377555607592> EXP : ${exp}/${nextexp} (+${gain})${leveledUp ? `\n**เลเวลอัป!** → เลเวล ${level} 🎉` : ''}\n\n💡 **หมายเหตุ**: ใช้ \`/สัตว์เลี้ยง อาบน้ำ\` เพื่อทำความสะอาดสัตว์เลี้ยงโดยตรง`)
         
         embeds.push(cleanEmbed);
       }
 
-      // เพิ่ม EXP (ลดจาก x2 เป็น x1 เพื่อความสมดุล)
-      await GPet.updateOne(
-        { _id: pet._id },
-        { $inc: { exp: collectedPoop } }
-      );
-
       await interaction.editReply({
         embeds,
+        files
       });
+
+      if (leveledUp) {
+        try {
+          const lvlEmbed = new EmbedBuilder()
+            .setColor('#c9ce93')
+            .setTitle('🎉 Level Up!')
+            .setDescription(`${interaction.user} สัตว์เลี้ยงเลเวลอัปเป็นเลเวล **${level}**!`);
+          await interaction.followUp({ embeds: [lvlEmbed], ephemeral: false });
+        } catch {}
+      }
 
     } catch (error) {
       console.error('Error in cleanpoop command:', error);
