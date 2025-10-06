@@ -190,6 +190,15 @@ module.exports = {
       });
 
       await interaction.editReply({ embeds: [embed] });
+      if (result.leveledUp) {
+        try {
+          const lvlEmbed = new EmbedBuilder()
+            .setColor('#c9ce93')
+            .setTitle('🎉 Level Up!')
+            .setDescription(`${interaction.user} สัตว์เลี้ยงเลเวลอัปเป็นเลเวล **${result.level}**!`);
+          await interaction.followUp({ embeds: [lvlEmbed], ephemeral: false });
+        } catch {}
+      }
     });
   }
 };
