@@ -47,10 +47,13 @@ async function registerRemoteFont() {
 
 (async () => {
     const ok = await registerRemoteFont();
+    console.log('Font registration from CDN:', ok);
     if (!ok) {
         try {
             GlobalFonts.registerFromPath(path.resolve("./assests/fonts/gothamrndssm_light.otf"), DEFAULT_FONT_FAMILY);
-        } catch (_) {
+            console.log('Font registration from local file: success');
+        } catch (e) {
+            console.log('Font registration from local file failed:', e.message);
             // ignore if not found; will fallback to platform fonts
         }
     }
@@ -287,7 +290,16 @@ function drawCenterStatus(ctx, text) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const fontSize = parseInt(process.env.PET_STATUS_FONT_SIZE || '12');
-  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
+  
+  // ทดสอบฟอนต์หลายแบบ
+  try {
+    ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm', sans-serif`;
+    console.log('Using font:', ctx.font);
+  } catch (e) {
+    console.log('Font error, using fallback:', e.message);
+    ctx.font = `bold ${fontSize}px sans-serif`;
+  }
+  
   // เงาบางๆ ให้ตัวอักษรอ่านง่าย
   ctx.fillStyle = '#FFFFFF';
   ctx.fillText(text, centerX, statusY + 1);
@@ -323,11 +335,18 @@ function drawStatusBars(ctx, pet) {
   // EXP + LV/XP%
   ctx.fillStyle = "#eeb32e";
   ctx.fillRect(92, 20, expbar, 14);
-  ctx.font = "bold 12px 'Gotham Rnd SSm'";
+  
+  // ทดสอบฟอนต์
+  try {
+    ctx.font = "bold 12px 'Gotham Rnd SSm', sans-serif";
+    console.log('Status bar font:', ctx.font);
+  } catch (e) {
+    console.log('Status bar font error, using fallback:', e.message);
+    ctx.font = "bold 12px sans-serif";
+  }
+  
   ctx.fillStyle = "#090909";
   ctx.fillText(`LV: ${pet.level}`, 92, 30);
-  ctx.font = "bold 12px 'Gotham Rnd SSm'";
-  ctx.fillStyle = "#090909";
   ctx.fillText(`XP: ${expbar2 || "0"}%`, 190, 30);
 
   // helper: วาดเฉพาะส่วนที่เติม + เส้นแสง/เงา 2px (ไม่มีราง/กรอบ)
@@ -516,7 +535,16 @@ async function makeNameTagDataUrl(text) {
   // วัดความกว้างข้อความ
   let c = Canvas.createCanvas(1, 1);
   let ctx = c.getContext('2d');
-  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
+  
+  // ทดสอบฟอนต์
+  try {
+    ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm', sans-serif`;
+    console.log('Name tag font (measure):', ctx.font);
+  } catch (e) {
+    console.log('Name tag font error (measure), using fallback:', e.message);
+    ctx.font = `bold ${fontSize}px sans-serif`;
+  }
+  
   const metrics = ctx.measureText(String(text || ''));
   const textW = Math.ceil(metrics.width);
   const textH = Math.ceil(fontSize + 2);
@@ -544,7 +572,13 @@ async function makeNameTagDataUrl(text) {
   ctx.fill();
   ctx.restore();
   // ข้อความสีขาว + เงาดำบางๆ
-  ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm'`;
+  try {
+    ctx.font = `bold ${fontSize}px 'Gotham Rnd SSm', sans-serif`;
+    console.log('Name tag font (draw):', ctx.font);
+  } catch (e) {
+    console.log('Name tag font error (draw), using fallback:', e.message);
+    ctx.font = `bold ${fontSize}px sans-serif`;
+  }
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#FFFFFF';
