@@ -1,5 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, AttachmentBuilder, StringSelectMenuOptionBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js");
-const Canvas = require("@napi-rs/canvas");
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js");
 
 // Dependencies
 const GProfile = require("../../settings/models/profile.js");
@@ -28,7 +27,7 @@ const PET_FOODS = [
     {
         id: "basic_food",
         name: "อาหารเม็ดคุณภาพเเย่",
-        price: 300, // 75 บาท/EXP (ลดจาก 300)
+        price: 150, // 75 บาท/EXP (ลดจาก 300)
         type: "food",
         feed: 1,
         exp: 2,
@@ -37,7 +36,7 @@ const PET_FOODS = [
     {
         id: "premium_food",
         name: "อาหารเม็ดคุณภาพดี",
-        price: 500, // 70 บาท/EXP (ลดจาก 500)
+        price: 350, // 70 บาท/EXP (ลดจาก 500)
         type: "food",
         feed: 2,
         exp: 5,
@@ -46,7 +45,7 @@ const PET_FOODS = [
     {
         id: "deluxe_food",
         name: "ทาโก้",
-        price: 700, // 65 บาท/EXP (ลดจาก 700)
+        price: 650, // 65 บาท/EXP (ลดจาก 700)
         type: "food",
         feed: 5,
         exp: 10,
@@ -55,7 +54,7 @@ const PET_FOODS = [
 	{
         id: "mega_food",
         name: "ขนมโดนัท",
-        price: 1250, // 60 บาท/EXP (ลดจาก 1250) - bulk discount
+        price: 1200, // 60 บาท/EXP (ลดจาก 1250) - bulk discount
         type: "food",
         feed: 10,
         exp: 20,
@@ -112,7 +111,7 @@ module.exports = {
 		// ตรวจสอบ cooldown
 		const cooldownRemaining = checkCooldown(interaction.user.id);
 		if (cooldownRemaining > 0) {
-			return interaction.editReply({ embeds: [new EmbedBuilder().setColor(client.color).setDescription(`⏰ คุณต้องรอ **${cooldownRemaining} วินาที** ก่อนที่จะเปิดร้านได้อีกครั้ง`)] });
+			return interaction.editReply({ embeds: [new EmbedBuilder().setColor(client.color).setDescription(`⏰ ดูเหมือนคุณจะเดินถึงบ้านเเล้ว รอ **${cooldownRemaining} วินาที** เพื่อกลับมาซื้อใหม่`)] });
 		}
 
 		const msg = await interaction.editReply({ embeds: [new EmbedBuilder().setColor(client.color).setDescription("Loading shop...")] });
@@ -137,23 +136,23 @@ async function openShopMenu(client, interaction, msg) {
 			.setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/shop.gif")
 			.setDescription("เลือกประเภทสินค้าที่ต้องการซื้อ");
 
-		const selectMenu = new StringSelectMenuBuilder()
+        const selectMenu = new StringSelectMenuBuilder()
 			.setCustomId('shop_category_select')
 			.setPlaceholder('เลือกประเภทร้านค้า')
 			.setMinValues(1)
 			.setMaxValues(1)
-			.setOptions([
-				{
-					label: '🍖 อาหารสัตว์เลี้ยง',
-					description: 'ซื้ออาหารสัตว์เลี้ยง',
-					value: 'food'
-				},
-				{
-					label: '🗑️ ถุงขยะ',
-					description: 'ซื้อถุงขยะสำหรับเก็บขี้',
-					value: 'cleaning'
-				}
-			]);
+            .addOptions(
+                {
+                    label: '🍖 อาหารสัตว์เลี้ยง',
+                    description: 'ซื้ออาหารสัตว์เลี้ยง',
+                    value: 'food'
+                },
+                {
+                    label: '🗑️ ถุงขยะ',
+                    description: 'ซื้อถุงขยะสำหรับเก็บขี้',
+                    value: 'cleaning'
+                }
+            );
 
 		const row = new ActionRowBuilder().addComponents(selectMenu);
 
@@ -266,32 +265,30 @@ async function openCleaningShop(client, interaction, msg) {
 				.setPlaceholder("เลือกถุงขยะ")
 				.setMinValues(1).setMaxValues(1);
 
-			if (slice.length === 0) {
-				menu = menu.setDisabled(true).addOptions(new StringSelectMenuOptionBuilder().setLabel('ไม่มีสินค้า').setValue('none').setDescription('—'));
-			} else {
-				menu = menu.setOptions(slice.map(item => new StringSelectMenuOptionBuilder()
-					.setLabel(`${item.emoji} ${item.name} | ${Commas(item.price)} บาท`)
-					.setValue(item.id)
-					.setDescription(item.description)));
-			}
+            if (slice.length === 0) {
+                menu = menu.setDisabled(true).addOptions(new StringSelectMenuOptionBuilder().setLabel('ไม่มีสินค้า').setValue('none').setDescription('—'));
+            } else {
+                menu = menu.addOptions(slice.map(item => new StringSelectMenuOptionBuilder()
+                    .setLabel(`${item.emoji} ${item.name} | ${Commas(item.price)} บาท`)
+                    .setValue(item.id)
+                    .setDescription(item.description)));
+            }
 			return menu;
 		}
 
-		const canvas = Canvas.createCanvas(450, 300);
-		const ctx = canvas.getContext("2d");
-		try { const bg = await Canvas.loadImage("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/shop/trash_bag-shop.png"); ctx.drawImage(bg, 0, 0, canvas.width, canvas.height); }
-		catch(_) { ctx.fillStyle = "#0b1020"; ctx.fillRect(0,0,450,300); }
-		const attc = new AttachmentBuilder(await canvas.encode("png"), { name: `cleaning_select.png` });
-		const embed = new EmbedBuilder().setImage("attachment://cleaning_select.png").setColor(client.color).setTitle("🗑️ ร้านขายถุงขยะ");
+        const embed = new EmbedBuilder()
+            .setColor(client.color)
+            .setTitle("🗑️ ร้านขายถุงขยะ")
+            .setImage("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/shop/trash_bag-shop.png");
 
 		const filter = (m) => m.user.id === interaction.user.id;
 		const collector = msg.createMessageComponentCollector({ filter, time: 5 * 60 * 1000 });
 
 		async function renderCleaningPage() {
-			const rowMenu = new ActionRowBuilder().addComponents(buildCleaningMenuSlice());
-			const rowPage = buildPaginationRow(page, totalPages, 'cleaning_shop');
-			try {
-				await msg.edit({ content: " ", embeds: [embed], components: [rowMenu, rowPage], files: [attc] });
+            const rowMenu = new ActionRowBuilder().addComponents(buildCleaningMenuSlice());
+            const rowPage = buildPaginationRow(page, totalPages, 'cleaning_shop');
+            try {
+                await msg.edit({ content: " ", embeds: [embed], components: [rowMenu, rowPage] });
 			} catch (error) {
 				if (error.code === 10008) {
 					console.error("Message no longer exists in renderCleaningPage, stopping collector");
@@ -437,32 +434,30 @@ async function openFoodShop(client, interaction, msg) {
 				.setPlaceholder("เลือกอาหารสัตว์เลี้ยง")
 				.setMinValues(1).setMaxValues(1);
 
-			if (slice.length === 0) {
-				menu = menu.setDisabled(true).addOptions(new StringSelectMenuOptionBuilder().setLabel('ไม่มีสินค้า').setValue('none').setDescription('—'));
-			} else {
-				menu = menu.setOptions(slice.map(food => new StringSelectMenuOptionBuilder()
-					.setLabel(`${food.emoji} ${food.name} | ${Commas(food.price)} บาท`)
-					.setValue(food.id)
-					.setDescription(`เพิ่มความอิ่ม: +${food.feed} | EXP: +${food.exp}`)));
-			}
+            if (slice.length === 0) {
+                menu = menu.setDisabled(true).addOptions(new StringSelectMenuOptionBuilder().setLabel('ไม่มีสินค้า').setValue('none').setDescription('—'));
+            } else {
+                menu = menu.addOptions(slice.map(food => new StringSelectMenuOptionBuilder()
+                    .setLabel(`${food.emoji} ${food.name} | ${Commas(food.price)} บาท`)
+                    .setValue(food.id)
+                    .setDescription(`เพิ่มความอิ่ม: +${food.feed} | EXP: +${food.exp}`)));
+            }
 			return menu;
 		}
 
-		const canvas = Canvas.createCanvas(450, 300);
-		const ctx = canvas.getContext("2d");
-		try { const bg = await Canvas.loadImage("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/shop/food-shop.png"); ctx.drawImage(bg, 0, 0, canvas.width, canvas.height); }
-		catch(_) { ctx.fillStyle = "#0b1020"; ctx.fillRect(0,0,450,300); }
-		const attc = new AttachmentBuilder(await canvas.encode("png"), { name: `food_select.png` });
-		const embed = new EmbedBuilder().setImage("attachment://food_select.png").setColor(client.color).setTitle("🍖 ร้านขายอาหารสัตว์เลี้ยง");
+        const embed = new EmbedBuilder()
+            .setColor(client.color)
+            .setTitle("🍖 ร้านขายอาหารสัตว์เลี้ยง")
+            .setImage("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/shop/food-shop.png");
 
 		const filter = (m) => m.user.id === interaction.user.id;
 		const collector = msg.createMessageComponentCollector({ filter, time: 5 * 60 * 1000 });
 
 		async function renderFoodPage() {
-			const rowMenu = new ActionRowBuilder().addComponents(buildFoodMenuSlice());
-			const rowPage = buildPaginationRow(page, totalPages, 'food_shop');
-			try {
-				await msg.edit({ content: " ", embeds: [embed], components: [rowMenu, rowPage], files: [attc] });
+            const rowMenu = new ActionRowBuilder().addComponents(buildFoodMenuSlice());
+            const rowPage = buildPaginationRow(page, totalPages, 'food_shop');
+            try {
+                await msg.edit({ content: " ", embeds: [embed], components: [rowMenu, rowPage] });
 			} catch (error) {
 				if (error.code === 10008) {
 					console.error("Message no longer exists in renderFoodPage, stopping collector");
