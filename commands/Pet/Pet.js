@@ -343,10 +343,22 @@ function drawStatusBars(ctx, pet) {
   const expbar = Math.round(159 * exp);
   const expbar2 = exp > 1 ? 100 : Math.round(100 * exp);
 
-  const affection = Number.isFinite(pet.affection) ? Number(pet.affection) : Number(pet.health || 0);
-  const fullness = Number.isFinite(pet.fullness) ? Number(pet.fullness) : Number(pet.hungry || 0);
-  const fatigue = Number.isFinite(pet.fatigue) ? Number(pet.fatigue) : (20 - Number(pet.sleep || 0));
-  const dirtiness = Number.isFinite(pet.dirtiness) ? Number(pet.dirtiness) : (20 - Number(pet.cleanliness || 0));
+  // Fallback สำหรับข้อมูลเก่า: แปลงจากระบบเก่าเป็นระบบใหม่
+  let affection, fullness, fatigue, dirtiness;
+  
+  if (typeof pet.affection !== 'undefined') {
+    // ใช้ระบบใหม่
+    affection = Number.isFinite(pet.affection) ? Number(pet.affection) : Number(pet.health || 0);
+    fullness = Number.isFinite(pet.fullness) ? Number(pet.fullness) : Number(pet.hungry || 0);
+    fatigue = Number.isFinite(pet.fatigue) ? Number(pet.fatigue) : (20 - Number(pet.sleep || 0));
+    dirtiness = Number.isFinite(pet.dirtiness) ? Number(pet.dirtiness) : (20 - Number(pet.cleanliness || 0));
+  } else {
+    // ใช้ระบบเก่า + แปลงเป็นระบบใหม่
+    affection = Number(pet.health || 20);           // health → affection
+    fullness = Number(pet.hungry || 20);            // hungry → fullness
+    dirtiness = Math.max(0, 20 - Number(pet.cleanliness || 20)); // cleanliness → dirtiness (inverted)
+    fatigue = Math.max(0, 20 - Number(pet.sleep || 20));       // sleep → fatigue (inverted)
+  }
 
   // ปรับขนาด/ตำแหน่งหลอดเพื่อไม่ให้ทับกรอบ
   const BAR_W = 57;   // เดิม ~57
@@ -414,10 +426,24 @@ function drawStatusBars(ctx, pet) {
 // สร้าง signature ของการ์ด เพื่อแคชผลลัพธ์ตามสถานะผู้ใช้แบบสั้น ๆ
 function buildPetSignature(pet, state, poseKey) {
   const expRatio = Math.min(100, Math.round((pet.exp / pet.nextexp) * 100) || 0);
-  const affection = Number.isFinite(pet.affection) ? Number(pet.affection) : Number(pet.health || 0);
-  const fullness = Number.isFinite(pet.fullness) ? Number(pet.fullness) : Number(pet.hungry || 0);
-  const fatigue = Number.isFinite(pet.fatigue) ? Number(pet.fatigue) : (20 - Number(pet.sleep || 0));
-  const dirtiness = Number.isFinite(pet.dirtiness) ? Number(pet.dirtiness) : (20 - Number(pet.cleanliness || 0));
+  
+  // Fallback สำหรับข้อมูลเก่า: แปลงจากระบบเก่าเป็นระบบใหม่
+  let affection, fullness, fatigue, dirtiness;
+  
+  if (typeof pet.affection !== 'undefined') {
+    // ใช้ระบบใหม่
+    affection = Number.isFinite(pet.affection) ? Number(pet.affection) : Number(pet.health || 0);
+    fullness = Number.isFinite(pet.fullness) ? Number(pet.fullness) : Number(pet.hungry || 0);
+    fatigue = Number.isFinite(pet.fatigue) ? Number(pet.fatigue) : (20 - Number(pet.sleep || 0));
+    dirtiness = Number.isFinite(pet.dirtiness) ? Number(pet.dirtiness) : (20 - Number(pet.cleanliness || 0));
+  } else {
+    // ใช้ระบบเก่า + แปลงเป็นระบบใหม่
+    affection = Number(pet.health || 20);           // health → affection
+    fullness = Number(pet.hungry || 20);            // hungry → fullness
+    dirtiness = Math.max(0, 20 - Number(pet.cleanliness || 20)); // cleanliness → dirtiness (inverted)
+    fatigue = Math.max(0, 20 - Number(pet.sleep || 20));       // sleep → fatigue (inverted)
+  }
+  
   return [
     `lv${pet.level}`,
     `xp${expRatio}`,
