@@ -38,7 +38,7 @@ module.exports = async (client) => {
                                 { $setOnInsert: { joinTime: new Date() } },
                                 { upsert: true }
                             );
-                            await addUserToVoice(guild.id, vs.id);
+                            await addUserToVoice(client, guild.id, vs.id);
                         } catch (e) { console.error('VOICE_INIT rebuild error:', e); }
                     })());
                 }
