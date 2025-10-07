@@ -18,10 +18,22 @@ const DEFAULT_EMOTION = 'happy';
 function getEmotionKey(petDoc) {
   if (!petDoc) return DEFAULT_EMOTION;
 
-  const affection = Number(petDoc.affection ?? 0);     // 0..20 สูง=เอ็นดูมาก
-  const fullness = Number(petDoc.fullness ?? 0);       // 0..20 สูง=อิ่ม
-  const dirtiness = Number(petDoc.dirtiness ?? 0);     // 0..20 สูง=สกปรก
-  const fatigue = Number(petDoc.fatigue ?? 0);         // 0..20 สูง=ง่วง/ล้า
+  // Fallback สำหรับข้อมูลเก่า: แปลงจากระบบเก่าเป็นระบบใหม่
+  let affection, fullness, dirtiness, fatigue;
+  
+  if (typeof petDoc.affection !== 'undefined') {
+    // ใช้ระบบใหม่
+    affection = Number(petDoc.affection ?? 0);
+    fullness = Number(petDoc.fullness ?? 0);
+    dirtiness = Number(petDoc.dirtiness ?? 0);
+    fatigue = Number(petDoc.fatigue ?? 0);
+  } else {
+    // ใช้ระบบเก่า + แปลงเป็นระบบใหม่
+    affection = Number(petDoc.health ?? 20);           // health → affection
+    fullness = Number(petDoc.hungry ?? 20);            // hungry → fullness
+    dirtiness = Math.max(0, 20 - Number(petDoc.cleanliness ?? 20)); // cleanliness → dirtiness (inverted)
+    fatigue = Math.max(0, 20 - Number(petDoc.sleep ?? 20));       // sleep → fatigue (inverted)
+  }
 
   // ลำดับการตัดสินใจตามความสำคัญ (จากมากไปน้อย)
   
