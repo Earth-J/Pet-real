@@ -85,7 +85,7 @@ function createBackgroundCanvas() {
 
     // เพิ่มลวดลาย
     ctx.globalAlpha = 0.1;
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#F0F0F0";
     drawPattern(ctx);
     ctx.globalAlpha = 1;
 
@@ -166,13 +166,13 @@ function drawRankSymbol(ctx, rank, x, y) {
         3: '#CD7F32'  // ทองแดง
     };
     
-    const color = rankColors[rank] || '#ffffff';
+    const color = rankColors[rank] || '#F0F0F0';
     
     if (rank <= 3) {
         // วาดวงกลมสำหรับอันดับ 1-3
         ctx.save();
         ctx.fillStyle = color;
-        ctx.strokeStyle = '#ffffff';
+        ctx.strokeStyle = '#F0F0F0';
         ctx.lineWidth = 2;
         
         ctx.beginPath();
@@ -181,8 +181,8 @@ function drawRankSymbol(ctx, rank, x, y) {
         ctx.stroke();
         
         // วาดตัวเลขในวงกลม
-        ctx.fillStyle = '#000000';
-        ctx.font = "bold 16px 'Gotham Rnd SSm'";
+        ctx.fillStyle = '#F0F0F0';
+        ctx.font = "bold 16px 'Gotham Rnd SSm', Arial, sans-serif";
         ctx.textAlign = 'center';
         ctx.fillText(rank, x, y - 5);
         ctx.restore();
@@ -199,14 +199,14 @@ async function drawRanking(ctx, rank, user, value, type, x, y) {
 
     // วาดสัญลักษณ์อันดับด้านหน้าสุด
     if (rank <= 3) {
-        drawRankSymbol(ctx, rank, x + -10, y + 20);
+        drawRankSymbol(ctx, rank, x + 10, y + 20);
     }
 
     // วาดอันดับ
-    ctx.font = "bold 24px 'Gotham Rnd SSm'";
-    ctx.fillStyle = rankColors[rank] || '#ffffff';
+    ctx.font = "bold 24px 'Gotham Rnd SSm', Arial, sans-serif";
+    ctx.fillStyle = rankColors[rank] || '#F0F0F0';
     ctx.textAlign = 'center';
-    ctx.fillText(`#${rank}`, x + 30, y + 20);
+    ctx.fillText(`#${rank}`, x + 50, y + 20);
 
     // วาดรูปโปรไฟล์
     try {
@@ -224,7 +224,7 @@ async function drawRanking(ctx, rank, user, value, type, x, y) {
         ctx.restore();
         
         // วาดขอบวงกลม
-        ctx.strokeStyle = rankColors[rank] || '#ffffff';
+        ctx.strokeStyle = rankColors[rank] || '#F0F0F0';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(avatarX + avatarSize/2, avatarY + avatarSize/2, avatarSize/2, 0, Math.PI * 2);
@@ -234,14 +234,14 @@ async function drawRanking(ctx, rank, user, value, type, x, y) {
     }
 
     // วาดชื่อผู้ใช้
-    ctx.font = "bold 18px 'Gotham Rnd SSm'";
-    ctx.fillStyle = '#ffffff';
+    ctx.font = "bold 18px 'Gotham Rnd SSm', Arial, sans-serif";
+    ctx.fillStyle = '#F0F0F0';
     ctx.textAlign = 'left';
     ctx.fillText(user.username, x + 140, y + 15);
 
     // วาดค่า
-    ctx.font = "16px 'Gotham Rnd SSm'";
-    ctx.fillStyle = '#b0b0b0';
+    ctx.font = "16px 'Gotham Rnd SSm', Arial, sans-serif";
+    ctx.fillStyle = '#e0e0e0';
     let displayValue = '';
     
     switch (type) {
@@ -314,8 +314,8 @@ module.exports = {
             ctx.drawImage(bgCanvas, 0, 0);
 
             // วาดหัวข้อ
-            ctx.font = "bold 32px 'Gotham Rnd SSm'";
-            ctx.fillStyle = '#ffffff';
+            ctx.font = "bold 32px 'Gotham Rnd SSm', Arial, sans-serif";
+            ctx.fillStyle = '#F0F0F0';
             ctx.textAlign = 'center';
             
             let title = '';
