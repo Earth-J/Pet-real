@@ -27,7 +27,7 @@ process.on('uncaughtException', error => console.log(error));
 ["slash"].forEach(x => client[x] = new Collection());
 ["loadCommand", "loadEvent", "loadDatabase", "PetEvents", "PoopSpawner"].forEach(x => require(`./handlers/${x}`)(client));
 require("./handlers/FireStreakHandler").init(client);
-require("./handlers/VoiceMoneyHandler").initVoiceMoneySystem();
+require("./handlers/VoiceMoneyHandler").initVoiceMoneySystem(client);
 require("./handlers/PetDirtinessHandler").initPetDirtinessSystem();
 
 // เริ่มระบบพฤติกรรมสัตว์เลี้ยงที่สมบูรณ์
