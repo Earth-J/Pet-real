@@ -64,7 +64,7 @@ module.exports = {
     // ตรวจสอบ cooldown
     const cooldownRemaining = checkCooldown(interaction.user.id);
     if (cooldownRemaining > 0) {
-      return interaction.editReply(`⏰ คุณต้องรอ **${cooldownRemaining} วินาที** ก่อนที่จะเล่นกับสัตว์เลี้ยงได้อีกครั้ง`);
+      return interaction.editReply(`⏰ สัตว์เลี้ยงของคุณพักเหนื่อยอยู่ รอ **${cooldownRemaining} วินาที** `);
     }
 
     await withUserLock(interaction.guild.id, interaction.user.id, async () => {
