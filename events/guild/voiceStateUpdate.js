@@ -12,20 +12,20 @@ module.exports = async (client, oldState, newState) => {
         
         // ผู้ใช้เข้าร่วมห้อง voice
         if (!oldState.channelId && newState.channelId) {
-            addUserToVoice(guildId, userId);
+            addUserToVoice(client, guildId, userId);
         }
         
         // ผู้ใช้ออกจากห้อง voice
         if (oldState.channelId && !newState.channelId) {
-            removeUserFromVoice(guildId, userId);
+            removeUserFromVoice(client, guildId, userId);
         }
         
         // ผู้ใช้เปลี่ยนห้อง voice
         if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
-            // หยุดการติดตามห้องเก่า
-            removeUserFromVoice(guildId, userId);
+            // หยุดการติดตามห้องเก่า (ระบุว่าเป็นการย้ายห้อง เพื่อลด log ชวนสับสนและไม่ลบ session)
+            removeUserFromVoice(client, guildId, userId, 'switch');
             // เริ่มการติดตามห้องใหม่
-            addUserToVoice(guildId, userId);
+            addUserToVoice(client, guildId, userId);
         }
         
     } catch (error) {
