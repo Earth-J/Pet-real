@@ -14,6 +14,77 @@ const GAP = 1; // tighter gap
 const PADDING = 10; // compact padding
 const TITLE_H = 16; // compact title bar
 
+function getViewStart(totalCols, viewCols) {
+    return Math.max(0, totalCols - viewCols);
+}
+
+function compressColumns(columns, rows = 6, mode = 'none') {
+    if (mode === 'top') {
+        return columns.map(col => Array.isArray(col) ? col.filter(Boolean) : []);
+    }
+    if (mode === 'bottom') {
+        return columns.map(col => {
+            const compact = (Array.isArray(col) ? col.filter(Boolean) : []);
+            const out = Array(rows).fill(null);
+            let r = rows - 1, i = compact.length - 1;
+            while (r >= 0 && i >= 0) { out[r] = compact[i]; r--; i--; }
+            return out;
+        });
+    }
+    if (mode === 'mixed') {
+        return columns.map(col => {
+            if (!Array.isArray(col)) return [];
+            const compact = col.filter(Boolean);
+            const hadNulls = col.length > compact.length; // overflow-generated columns contain leading nulls
+            if (!hadNulls) {
+                return compact; // top-anchored
+            }
+            const out = Array(rows).fill(null);
+            let r = rows - 1, i = compact.length - 1;
+            while (r >= 0 && i >= 0) { out[r] = compact[i]; r--; i--; }
+            return out;
+        });
+    }
+    return columns;
+}
+
+function remapTieForTopCompression(mark, columns) {
+    const col = columns[mark.col] || [];
+    let countNonNullUpToRow = 0;
+    for (let r = 0; r <= mark.row && r < col.length; r++) {
+        if (col[r]) countNonNullUpToRow++;
+    }
+    return { ...mark, row: Math.max(0, countNonNullUpToRow - 1) };
+}
+
+function remapTieForBottomCompression(mark, columns, rows = 6) {
+    const col = columns[mark.col] || [];
+    let countNonNullUpToRow = 0;
+    let totalNonNull = 0;
+    for (let r = 0; r < col.length; r++) {
+        if (col[r]) {
+            totalNonNull++;
+            if (r <= mark.row) countNonNullUpToRow++;
+        }
+    }
+    const k = Math.max(0, countNonNullUpToRow - 1); // rank within compacted
+    const L = totalNonNull;
+    const newRow = Math.max(0, Math.min(rows - 1, (rows - L) + k));
+    return { ...mark, row: newRow };
+}
+
+function remapTieForMixedCompression(mark, columns, rows = 6) {
+    const col = columns[mark.col] || [];
+    const compactLen = Array.isArray(col) ? col.filter(Boolean).length : 0;
+    const hadNulls = Array.isArray(col) ? (col.length > compactLen) : false;
+    if (!hadNulls) {
+        // top-anchored mapping
+        return remapTieForTopCompression(mark, columns);
+    }
+    // bottom-anchored mapping
+    return remapTieForBottomCompression(mark, columns, rows);
+}
+
 function drawGrid(ctx, startX, startY, rows, cols, cellSize = CELL) {
     ctx.strokeStyle = "#dcdcdc"; // light gray grid
     ctx.lineWidth = 1;
@@ -98,7 +169,8 @@ function renderPanel(ctx, title, matrix, startX, startY, rows = 6, cols = 12, le
 }
 
 function toMatrixFromColumns(columns, rows = 6, cols = 12, colorMap) {
-    const view = columns.slice(Math.max(0, columns.length - cols));
+    const sliced = columns.slice(getViewStart(columns.length, cols));
+    const view = sliced.filter(col => Array.isArray(col) && col.some(Boolean));
     const matrix = Array.from({ length: rows }, () => Array(cols).fill(null));
     for (let c = 0; c < view.length; c++) {
         const col = view[c];
@@ -114,8 +186,11 @@ function toMatrixFromColumns(columns, rows = 6, cols = 12, colorMap) {
 // Build a composite image containing Big Road and three derived roads, stacked vertically
 // - bigRoadColumns: columns of symbols 'B'|'P'
 // - derived: object with { bigEyeColumns, smallColumns, cockroachColumns } where entries are 'R'|'B' (pattern vs change)
-async function renderRoadsComposite({ widthCols = 12, heightRows = 6, bigRoadColumns, bigEyeColumns, smallColumns, cockroachColumns, askPredict } ) {
-    if (!CanvasLib) return null;
+async function renderRoadsComposite({ widthCols = 12, heightRows = 6, bigRoadColumns, bigEyeColumns, smallColumns, cockroachColumns, askPredict, tieMarks } ) {
+    if (!CanvasLib) {
+        console.warn('[roadsCanvas] Canvas lib not available, skip image render');
+        return null;
+    }
     const cols = widthCols;
     const rows = heightRows;
     // Layout: Big Road on top full width; bottom row has three derived panels side-by-side
@@ -136,8 +211,37 @@ async function renderRoadsComposite({ widthCols = 12, heightRows = 6, bigRoadCol
 
     // Top: Big Road full width
     let offsetY = PADDING;
-    const bigMatrix = toMatrixFromColumns(bigRoadColumns, rows, cols, bigColorMap);
+    const displayBigColumns = compressColumns(bigRoadColumns, rows, 'mixed'); // per-column: top if no overflow, bottom if overflow
+    const bigMatrix = toMatrixFromColumns(displayBigColumns, rows, cols, bigColorMap);
     renderPanel(ctx, "Big Road", bigMatrix, PADDING, offsetY, rows, cols, "🔴 Banker 🔵 Player", "solid", CELL);
+    // Overlay tie marks as green ring with number
+    if (Array.isArray(tieMarks)) {
+        for (const m of tieMarks) {
+            const viewStart = getViewStart(displayBigColumns.length, cols);
+            const mm = remapTieForMixedCompression(m, bigRoadColumns, rows);
+            const c = mm.col - viewStart;
+            const r = mm.row;
+            if (c < 0 || c >= cols || r < 0 || r >= rows) continue;
+            const gridX = PADDING;
+            const gridY = offsetY + TITLE_H;
+            const x = gridX + c * (CELL + GAP);
+            const y = gridY + r * (CELL + GAP);
+            const cx = x + CELL / 2;
+            const cy = y + CELL / 2;
+            // green ring
+            ctx.beginPath();
+            ctx.strokeStyle = '#2e7d32';
+            ctx.lineWidth = 3;
+            ctx.arc(cx, cy, Math.floor(CELL/2) - 3, 0, Math.PI*2);
+            ctx.stroke();
+            // number
+            ctx.fillStyle = '#2e7d32';
+            ctx.font = 'bold 12px sans-serif';
+            const label = String(m.count || 1);
+            const mW = ctx.measureText(label).width;
+            ctx.fillText(label, cx - mW/2, cy + 4);
+        }
+    }
     offsetY += panelHeight;
 
     // Bottom: three derived panels in one row + Ask badges (optional)
