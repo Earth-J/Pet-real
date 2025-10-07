@@ -126,6 +126,11 @@ const EXPECTED_SHA256 = {
     "https://cdn.jsdelivr.net/npm/baccarat-engine@1.1.5/dist/index.umd.js": "expected_hash_here"
 };
 
+// Engine caching
+let cachedEngineFactory = null;
+let lastFetchAt = 0;
+const CACHE_TTL_MS = 300000; // 5 minutes
+
 const crypto = require("crypto");
 
 function calculateSHA256(data) {
