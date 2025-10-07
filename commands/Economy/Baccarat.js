@@ -41,6 +41,17 @@ setInterval(() => {
 const MIN_BET = 10;
 const MAX_BET = 100000;
 
+// Minimal tone embed colors
+const UI_COLORS = {
+    primary: 0x2b2d31, // minimalist dark
+    subtle: 0x99aab5,  // muted gray
+    danger: 0xe74c3c,  // soft red
+    success: 0x2ecc71, // soft green
+    player: 0x59aff6,  // soft blue for player
+    banker: 0xf65959,  // soft orange for banker
+    tie: 0x6ee884,     // soft purple for tie
+};
+
 // Reveal animation config
 const BACK_L = "<:back_card_left:1424850432877924442>";
 const BACK_R = "<:back_card_right:1424850440448643082>";
@@ -120,6 +131,146 @@ function playRoundBiasedByOutcome(playRoundFn, betSide, userWeights, maxTrials =
         if (w === targetWinner) return r;
     }
     return last;
+}
+
+// Volatility control (statistical tuning, not outcome cheating)
+const VOLATILITY_MODE = process.env.BACCARAT_VOL_MODE || 'medium'; // 'low' | 'medium' | 'high'
+const VOLATILITY_STRENGTH = Number(process.env.BACCARAT_VOL_STRENGTH || 1.0); // 0.0 .. 2.0
+const VOL_CANDIDATES = Number(process.env.BACCARAT_VOL_CANDIDATES || 6);
+const RISK_ENABLED = (process.env.BACCARAT_RISK_ENABLED || 'true') !== 'false';
+const RISK_SKEW_MAX = Number(process.env.BACCARAT_RISK_SKEW_MAX || 0.06); // max deviation from RTP per winner side
+const RISK_NET_THRESHOLD = Number(process.env.BACCARAT_RISK_NET_THRESHOLD || 50000); // net profit to be considered heavy winner
+const RISK_BET_THRESHOLD = Number(process.env.BACCARAT_RISK_BET_THRESHOLD || 5000); // stake considered impactful
+
+// Random giveaway (hot) streak controller
+const HOT_ENABLED = (process.env.BACCARAT_HOT_ENABLED || 'true') !== 'false';
+const HOT_TRIGGER_CHANCE = Number(process.env.BACCARAT_HOT_TRIGGER_CHANCE || 0.08); // 8% per settle
+const HOT_MIN_ROUNDS = Number(process.env.BACCARAT_HOT_MIN_ROUNDS || 2);
+const HOT_MAX_ROUNDS = Number(process.env.BACCARAT_HOT_MAX_ROUNDS || 5);
+const HOT_FAVOR_BOOST = Number(process.env.BACCARAT_HOT_FAVOR_BOOST || 0.05); // +5% toward majority side
+const guildHotState = new Map(); // guildId -> remainingRounds
+
+function baseRtpOutcomeWeights() {
+    // Approximate long-run distribution including ties
+    // Banker ≈ 45.86%, Player ≈ 44.62%, Tie ≈ 9.52%
+    return { player: 0.446, banker: 0.458, tie: 0.096 };
+}
+
+function pickDesiredByRTP() {
+    return pickWeighted(baseRtpOutcomeWeights());
+}
+
+function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+
+function computeAdaptiveOutcomeWeights(participantsMap, userIdToProfile) {
+    const base = baseRtpOutcomeWeights();
+    if (!RISK_ENABLED || !participantsMap || participantsMap.size === 0) return base;
+    let pressurePlayer = 0;
+    let pressureBanker = 0;
+    for (const [uid, p] of participantsMap.entries()) {
+        const prof = userIdToProfile.get(uid);
+        const net = Number(prof?.baccarat?.net || 0);
+        const wins = Number(prof?.baccarat?.wins || 0);
+        const losses = Number(prof?.baccarat?.losses || 0);
+        const winRate = wins + losses > 0 ? wins / (wins + losses) : 0.5;
+        const betImpact = Math.max(0, Number(p.bet) || 0) / (RISK_BET_THRESHOLD || 1);
+        const winnerScore = Math.max(0, net - RISK_NET_THRESHOLD);
+        const weight = clamp01(0.4 * betImpact + 0.6 * (winnerScore / (RISK_NET_THRESHOLD * 4))) * (0.5 + winRate / 2);
+        if (p.side === 'player') pressurePlayer += weight; else if (p.side === 'banker') pressureBanker += weight;
+    }
+    // positive pressure means many heavy winners currently on that side; we want to slightly reduce its chance
+    let player = base.player;
+    let banker = base.banker;
+    const diff = pressurePlayer - pressureBanker; // >0 means penalize player more
+    const skew = Math.tanh(diff) * RISK_SKEW_MAX; // bounded skew
+    const targetPlayer = clamp01(player - skew);
+    const targetBanker = clamp01(banker + skew);
+    // keep tie proportion close; rescale to sum=1
+    let tie = base.tie;
+    const total = targetPlayer + targetBanker + tie;
+    return total > 0 ? { player: targetPlayer / total, banker: targetBanker / total, tie: tie / total } : base;
+}
+
+function maybeActivateHotStreak(guildId) {
+    if (!HOT_ENABLED) return;
+    if (guildHotState.get(guildId) > 0) return;
+    if (Math.random() < HOT_TRIGGER_CHANCE) {
+        const len = Math.max(HOT_MIN_ROUNDS, Math.floor(HOT_MIN_ROUNDS + Math.random() * Math.max(0, HOT_MAX_ROUNDS - HOT_MIN_ROUNDS + 1)));
+        guildHotState.set(guildId, len);
+    }
+}
+
+function applyHotFavor(guildId, participantsMap, weights) {
+    if (!HOT_ENABLED) return weights;
+    const remain = guildHotState.get(guildId) || 0;
+    if (remain <= 0) return weights;
+    let playerCount = 0, bankerCount = 0;
+    for (const [, p] of participantsMap.entries()) {
+        if (p.side === 'player') playerCount++; else if (p.side === 'banker') bankerCount++;
+    }
+    let player = weights.player, banker = weights.banker, tie = weights.tie;
+    if (playerCount > bankerCount) {
+        const shift = Math.min(HOT_FAVOR_BOOST, banker);
+        player += shift; banker -= shift;
+    } else if (bankerCount > playerCount) {
+        const shift = Math.min(HOT_FAVOR_BOOST, player);
+        banker += shift; player -= shift;
+    } else {
+        // equal; nudge away from tie toward non-tie
+        const shift = Math.min(HOT_FAVOR_BOOST, tie * 0.5);
+        player += shift/2; banker += shift/2; tie -= shift;
+    }
+    const total = player + banker + tie;
+    if (total <= 0) return weights;
+    return { player: player/total, banker: banker/total, tie: tie/total };
+}
+
+function extractRecentOutcomesFromColumns(columns, take = 30) {
+    const seq = [];
+    for (const col of columns) for (const s of col) if (s) seq.push(s);
+    return seq.slice(Math.max(0, seq.length - take));
+}
+
+function volatilityScoreForWinner(historySymbols, winner, mode = VOLATILITY_MODE) {
+    // historySymbols are 'B'|'P' from Big Road; winner is 'player'|'banker'|'tie'
+    if (winner === 'tie') return 0; // ignore tie in scoring
+    const nextSym = winner === 'banker' ? 'B' : 'P';
+    const n = historySymbols.length;
+    if (n === 0) return 0;
+    // compute current streak length of the same symbol at tail
+    const last = historySymbols[n - 1];
+    let streak = 0;
+    for (let i = n - 1; i >= 0; i--) {
+        if (historySymbols[i] === last) streak++; else break;
+    }
+    const continues = nextSym === last;
+    if (mode === 'high') {
+        // favor continuing streaks (higher when longer streak)
+        return (continues ? 1 : -1) * (1 + streak);
+    }
+    if (mode === 'low') {
+        // favor breaking streaks (higher when longer current streak)
+        return (!continues ? 1 : -1) * (1 + streak);
+    }
+    // medium: mild preference for clustering
+    return (continues ? 1 : -0.5) * (1 + Math.log2(1 + streak));
+}
+
+function chooseRoundWithVolatility({ rawPlay, historySymbols, desiredWinner, candidates = VOL_CANDIDATES, strength = VOLATILITY_STRENGTH }) {
+    // Generate candidate rounds and choose one matching desiredWinner with best score
+    const pool = [];
+    for (let i = 0; i < Math.max(1, candidates); i++) pool.push(rawPlay());
+    // filter by desired winner to maintain long-run RTP proportions
+    const matches = pool.filter(r => (r.winner || '').toLowerCase() === desiredWinner);
+    if (!matches.length) return pool[0];
+    let best = matches[0];
+    let bestScore = -Infinity;
+    for (const r of matches) {
+        const w = (r.winner || '').toLowerCase();
+        const score = volatilityScoreForWinner(historySymbols, w, VOLATILITY_MODE) * strength;
+        if (score > bestScore) { bestScore = score; best = r; }
+    }
+    return best;
 }
 
 // Engine version and integrity check
@@ -404,6 +555,10 @@ function renderHand(cards) {
     return cards.map(renderCard).join(" ");
 }
 
+function formatNum(n) {
+    try { return Number(n).toLocaleString('en-US'); } catch { return String(n); }
+}
+
 // ==========================
 // Per-guild baccarat room (batch round)
 // ==========================
@@ -412,7 +567,7 @@ const ROOM_WAIT_MS = 30_000; // 30 seconds collecting bets
 
 function getOrCreateRoom(guildId) {
     let room = guildRooms.get(guildId);
-    if (!room || room.status === "settling") {
+    if (!room) {
         room = {
             participants: new Map(),
             status: "collecting",
@@ -430,21 +585,87 @@ function roomTimeLeftMs(room) {
 }
 
 // ==========================
+// Room outcome selection helpers (bias by liability and user history)
+// ==========================
+function sumRoomNetPayoutForWinner(participantsMap, winner) {
+    let sum = 0;
+    for (const [, p] of participantsMap.entries()) {
+        let gross = 0;
+        if (winner === "player") {
+            if (p.side === "player") gross = Math.floor(p.bet * 2);
+        } else if (winner === "banker") {
+            if (p.side === "banker") gross = Math.floor(p.bet * 1.95);
+        } else if (winner === "tie") {
+            if (p.side === "tie") gross = Math.floor(p.bet * 9);
+            else gross = p.bet; // push
+        }
+        // Player net = gross - stake
+        sum += (gross - p.bet);
+    }
+    return sum; // larger means more payout to players (worse for house)
+}
+
+function computeHouseBiasedWeights(participantsMap, userIdToProfile) {
+    // Base: prefer lower total net payout to players
+    const candidates = ["player","banker","tie"];
+    const raw = {};
+    let hasTieBet = false;
+    for (const [, p] of participantsMap.entries()) if (p.side === 'tie') { hasTieBet = true; break; }
+    for (const w of candidates) {
+        const net = sumRoomNetPayoutForWinner(participantsMap, w);
+        // Convert net to weight: lower net -> higher weight
+        const liabilityScore = Math.max(0, net);
+        const liabilityWeight = 1 / (1 + liabilityScore); // in (0,1]
+
+        // History penalty: if likely winners are high win-rate users, decrease weight
+        let winnersWinRateSum = 0;
+        for (const [uid, p] of participantsMap.entries()) {
+            const prof = userIdToProfile.get(uid);
+            const b = prof?.baccarat || {};
+            const rounds = Math.max(1, b.rounds || 0);
+            const winRate = Math.min(1, Math.max(0, (b.wins || 0) / rounds));
+            const wouldWin = (w === "player" && p.side === "player") || (w === "banker" && p.side === "banker") || (w === "tie" && p.side === "tie");
+            if (wouldWin) winnersWinRateSum += winRate;
+        }
+        const historyPenalty = 1 / (1 + winnersWinRateSum); // more winners' winRate => lower weight
+
+        // Slight floor for tie kept very low
+        const tieFloor = w === "tie" ? 0.001 : 0;
+        let weight = Math.max(0, liabilityWeight * historyPenalty + tieFloor);
+        // If nobody bet tie, heavily downscale tie weight
+        if (w === 'tie' && !hasTieBet) weight *= 0.05;
+        raw[w] = weight;
+    }
+    // Normalize
+    const total = (raw.player||0)+(raw.banker||0)+(raw.tie||0);
+    return total > 0 ? { player: raw.player/total, banker: raw.banker/total, tie: raw.tie/total } : { player: 0.49, banker: 0.49, tie: 0.02 };
+}
+
+// ==========================
 // Guild outcome history (Big Road) - persisted in MongoDB
 // ==========================
 const MAX_HISTORY = 70; // keep up to 70 rounds per guild
 
-async function appendGuildOutcome(guildId, winner) {
+async function appendGuildOutcome(guildId, winner, tieMark) {
     if (!guildId) return;
     let symbol = null;
     if (winner === "banker") symbol = "B";
     else if (winner === "player") symbol = "P";
-    if (!symbol) return; // ignore ties
-    await GuildState.updateOne(
-        { guild: guildId },
-        { $push: { baccaratHistory: { $each: [symbol], $slice: -MAX_HISTORY } } },
-        { upsert: true }
-    );
+    if (!symbol && !tieMark) return; // ignore ties without position
+    if (symbol) {
+        await GuildState.updateOne(
+            { guild: guildId },
+            { $push: { baccaratHistory: { $each: [symbol], $slice: -MAX_HISTORY } } },
+            { upsert: true }
+        );
+    }
+    if (tieMark) {
+        await GuildState.updateOne(
+            { guild: guildId },
+            { $push: { tieMarks: tieMark } },
+            { upsert: true }
+        );
+    }
 }
 
 async function getGuildHistory(guildId) {
@@ -500,10 +721,33 @@ module.exports = {
             // Join or create room
             let room = getOrCreateRoom(guildId);
             if (room.status !== "collecting") {
-                return interaction.editReply({ content: `มีรอบกำลังเปิดไพ่ กรุณารอให้จบก่อนแล้วค่อยเดิมพันรอบถัดไป` });
+                const embed = new EmbedBuilder()
+                    .setAuthor({ name: `Baccarat | ไม่สามารถเข้าร่วมได้`, iconURL: interaction.guild.iconURL() || undefined })
+                    .setColor(UI_COLORS.danger)
+                    .setDescription(`ขณะนี้กำลังเปิดไพ่ กรุณารอให้จบรอบก่อนแล้วค่อยเดิมพันรอบถัดไป`);
+                await interaction.followUp({ embeds: [embed], ephemeral: true });
+                return;
             }
             if (room.participants.has(user.id)) {
-                return interaction.editReply({ content: `คุณได้เข้าร่วมรอบนี้แล้ว กรุณารอผล` });
+                const embed = new EmbedBuilder()
+                    .setAuthor({ name: `Baccarat | เข้าร่วมแล้ว`, iconURL: interaction.guild.iconURL() || undefined })
+                    .setColor(UI_COLORS.subtle)
+                    .setDescription(`คุณได้เข้าร่วมรอบนี้แล้ว กรุณารอผล`);
+                await interaction.followUp({ embeds: [embed], ephemeral: true });
+                return;
+            }
+
+            // Safety: disallow joining across multiple channels at once
+            // Only allow joins from the same channel where room started
+            if (!room.channelId) {
+                room.channelId = interaction.channelId;
+            } else if (room.channelId !== interaction.channelId) {
+                const embed = new EmbedBuilder()
+                    .setAuthor({ name: `Baccarat | ช่องไม่ตรง`, iconURL: interaction.guild.iconURL() || undefined })
+                    .setColor(UI_COLORS.danger)
+                    .setDescription(`ขณะนี้มีห้องเดิมพันกำลังรันในอีกช่อง โปรดรอรอบใหม่หรือไปยังช่องเดิม`);
+                await interaction.followUp({ embeds: [embed], ephemeral: true });
+                return;
             }
 
             // Atomic balance decrement to join
@@ -526,10 +770,31 @@ module.exports = {
                     if (!currentRoom || currentRoom.status !== "collecting") return;
                     currentRoom.status = "settling";
                     try {
+                        // Load profiles for biasing
+                        const userIds = Array.from(currentRoom.participants.keys());
+                        const profiles = await GProfile.find({ guild: guildId, user: { $in: userIds } }, { baccarat: 1, user: 1 }).lean();
+                        const userIdToProfile = new Map();
+                        for (const pr of profiles) userIdToProfile.set(pr.user, pr);
+
                         const engineFactory = await loadBaccaratEngine();
                         const engine = engineFactory();
                         const rawPlay = engine.playRound ? () => engine.playRound() : () => engine();
-                        const result = rawPlay();
+                        // Volatility-aware selection with adaptive risk control + random hot streak
+                        // 1) maybe activate hot streak for this guild
+                        maybeActivateHotStreak(guildId);
+                        // 2) choose desired winner weights by RTP adjusted by heavy-winner pressure
+                        let desiredWeights = computeAdaptiveOutcomeWeights(currentRoom.participants, userIdToProfile);
+                        // 3) if hot streak active, nudge weights toward majority side
+                        desiredWeights = applyHotFavor(guildId, currentRoom.participants, desiredWeights);
+                        const desired = pickWeighted({ player: desiredWeights.player, banker: desiredWeights.banker, tie: desiredWeights.tie });
+                        // 4) build Big Road history symbols for volatility scoring
+                        const historySymbols = await getGuildHistory(guildId);
+                        // 5) generate candidates and pick the one that best fits volatility mode
+                        const result = chooseRoundWithVolatility({
+                            rawPlay,
+                            historySymbols,
+                            desiredWinner: desired,
+                        });
                         const playerHand = result.player || result.playerHand || [];
                         const bankerHand = result.banker || result.bankerHand || [];
                         const winner = (result.winner || "").toLowerCase();
@@ -540,7 +805,7 @@ module.exports = {
                             .setAuthor({ name: `Baccarat | เปิดไพ่...`, iconURL: interaction.guild.iconURL() || undefined })
                             .setTitle(`แจกไพ่...`)
                             .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/Dealer.png")
-                            .setColor(0x5865f2)
+                            .setColor(UI_COLORS.primary)
                             .setDescription([
                                 `Player: ${[renderBackCard(), renderBackCard(), renderBackCard()].join(" ")}`,
                                 `Banker: ${[renderBackCard(), renderBackCard(), renderBackCard()].join(" ")}`,
@@ -558,7 +823,7 @@ module.exports = {
                                 .setAuthor({ name: `Baccarat | เปิดไพ่...`, iconURL: interaction.guild.iconURL() || undefined })
                                 .setTitle(title)
                                 .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/Dealer.png")
-                                .setColor(0x5865f2)
+                                .setColor(UI_COLORS.primary)
                                 .setDescription(lines.join("\n"));
                         };
                         if (playerHand[0]) { pDisplay[0] = renderCard(playerHand[0]); await sleep(REVEAL_STEP_DELAY); await interaction.editReply ? null : null; await msg.edit({ embeds: [makeFrame("เปิดไพ่...")] }); }
@@ -586,9 +851,20 @@ module.exports = {
                         }
                         if (updates.length) await Promise.allSettled(updates);
 
-                        // Record outcome to roads
-                        await appendGuildOutcome(guildId, winner);
+                        // Record outcome to roads (with tie mark position if tie)
+                        let tieMark = null;
+                        if (winner === 'tie') {
+                            // Compute last head position (col,row) on big road
+                            const existing = await getGuildHistory(guildId);
+                            const colsSim = buildBigRoadColumns(existing, 6);
+                            let colIdx = colsSim.length - 1;
+                            let rowIdx = (colsSim[colIdx]?.filter(Boolean).length || 1) - 1;
+                            if (colIdx < 0) { colIdx = 0; rowIdx = 0; }
+                            tieMark = { col: colIdx, row: rowIdx, count: 1 };
+                        }
+                        await appendGuildOutcome(guildId, winner, tieMark);
                         const guildHistory = await getGuildHistory(guildId);
+                        // Note: tieMarks read in renderer
                         const bigCols = buildBigRoadColumns(guildHistory, 6);
                         const bigEyeCols = buildDerivedRoadColumns(bigCols, 1, 6);
                         const smallCols = buildDerivedRoadColumns(bigCols, 2, 6);
@@ -616,9 +892,10 @@ module.exports = {
                                         P: predictDerivedColor(bigCols, 'P', 3, 6),
                                     },
                                 },
+                                tieMarks: (await GuildState.findOne({ guild: guildId }, { tieMarks: 1 }).lean())?.tieMarks || [],
                             });
                             if (png) {
-                                const name = `roads_${guildId}.png`;
+                                const name = `roads_${guildId}_${Date.now()}.png`;
                                 roadsAttachment = { attachment: Buffer.from(png), name };
                             }
                         } catch (_) {}
@@ -636,14 +913,15 @@ module.exports = {
                                 else grossReturn = p.bet;
                             }
                             const net = grossReturn - p.bet;
-                            summary.push(`• ${p.username}: ${p.side.toUpperCase()} | เดิมพัน ${p.bet} | สุทธิ ${net >= 0 ? `+${net}` : `${net}`}`);
+                            const tag = `<@${uid}>`;
+                            summary.push(`• ${tag}: ${p.side.toUpperCase()} | เดิมพัน ${formatNum(p.bet)} | สุทธิ ${net >= 0 ? `+${formatNum(net)}` : `${formatNum(net)}`}`);
                         }
 
                         const resultEmbed = new EmbedBuilder()
                             .setAuthor({ name: `Baccarat | รอบรวมผู้เล่น`, iconURL: interaction.guild.iconURL() || undefined })
                             .setTitle(`ผลลัพธ์บาคาร่า`)
                             .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/Dealer.png")
-                            .setColor(winner === "player" ? 0x5865f2 : winner === "banker" ? 0xd83c3e : 0x3ba55c)
+                            .setColor(winner === "player" ? UI_COLORS.player : winner === "banker" ? UI_COLORS.banker : UI_COLORS.tie)
                             .setDescription([
                                 `ผู้ชนะ: **${winner.toUpperCase()}**`,
                                 `Player: ${renderHand(playerHand)} ${points.player !== undefined ? `(${points.player})` : ""}`,
@@ -653,7 +931,7 @@ module.exports = {
                             ].join("\n"));
 
                         if (roadsAttachment) {
-                            const roadsEmbed = new EmbedBuilder().setColor(0x5865f2).setImage(`attachment://${roadsAttachment.name}`);
+                            const roadsEmbed = new EmbedBuilder().setColor(UI_COLORS.subtle).setImage(`attachment://${roadsAttachment.name}`);
                             await interaction.followUp({ embeds: [resultEmbed, roadsEmbed], files: [roadsAttachment] });
                         } else {
                             await interaction.followUp({ embeds: [resultEmbed] });
@@ -664,13 +942,27 @@ module.exports = {
                     } finally {
                         // reset room
                         clearTimeout(currentRoom.timer);
+                        // consume hot streak round if active
+                        const remain = guildHotState.get(guildId) || 0;
+                        if (remain > 0) guildHotState.set(guildId, remain - 1);
                         guildRooms.delete(guildId);
                     }
                 }, roomTimeLeftMs(room));
             }
 
             const secondsLeft = Math.ceil(roomTimeLeftMs(room) / 1000);
-            return interaction.editReply({ content: `เข้าร่วมรอบแล้ว | ฝั่ง: **${side.toUpperCase()}** | เดิมพัน: **${bet}** | จะเปิดไพ่ใน ${secondsLeft}s` });
+            const ackEmbed = new EmbedBuilder()
+                .setAuthor({ name: `Baccarat | เข้าร่วมรอบ`, iconURL: interaction.guild.iconURL() || undefined })
+                .setThumbnail(user.displayAvatarURL())
+                .setColor(UI_COLORS.primary)
+                .setDescription([
+                    `เข้าร่วมรอบแล้ว`,
+                    `ฝั่ง: **${side.toUpperCase()}**`,
+                    `เดิมพัน: **${formatNum(bet)}**`,
+                    `จะเปิดไพ่ใน **${secondsLeft}s**`,
+                ].join("\n"))
+                .setFooter({ text: `ขั้นต่ำ: ⏣ ${MIN_BET} | สูงสุด: ⏣ ${MAX_BET}` });
+            return interaction.editReply({ embeds: [ackEmbed] });
             
             // Old single-round per-user flow removed in room mode
 
@@ -716,7 +1008,7 @@ module.exports = {
                 .setAuthor({ name: `${user.username} | Baccarat`, iconURL: user.displayAvatarURL() })
                 .setTitle(`แจกไพ่...`)
                 .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/Dealer.png")
-                .setColor(0x5865f2)
+                .setColor(client.color)
                 .setDescription([
                     `Player: ${[renderBackCard(), renderBackCard(), renderBackCard()].join(" ")}`,
                     `Banker: ${[renderBackCard(), renderBackCard(), renderBackCard()].join(" ")}`,
@@ -737,7 +1029,7 @@ module.exports = {
                 .setAuthor({ name: `${user.username} | Baccarat`, iconURL: user.displayAvatarURL() })
                 .setTitle(title)
                 .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/Dealer.png")
-                .setColor(0x5865f2)
+                .setColor(client.color)
                 .setDescription(lines.join("\n"))
                 .setFooter({ text: `ขั้นต่ำ: ⏣ ${MIN_BET} | สูงสุด: ⏣ ${MAX_BET}` });
             };
@@ -760,7 +1052,7 @@ module.exports = {
                 .setAuthor({ name: `${user.username} | Baccarat`, iconURL: user.displayAvatarURL() })
                 .setTitle(`ผลลัพธ์บาคาร่า`)
                 .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/Dealer.png")
-                .setColor(winner === "player" ? 0x5865f2 : winner === "banker" ? 0xd83c3e : 0x3ba55c)
+                .setColor(winner === "player" ? client.color : winner === "banker" ? client.color : 0x3ba55c)
                 .setDescription(
                     [
                         ...resultLines,
@@ -785,7 +1077,7 @@ module.exports = {
 
             const roadsEmbed = new EmbedBuilder()
                 .setAuthor({ name: `${user.username} | Roads`, iconURL: user.displayAvatarURL() })
-                .setColor(0x5865f2);
+                .setColor(client.color);
 
             // Try canvas composite (optional)
             let roadsAttachment = null;
