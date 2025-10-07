@@ -6,8 +6,19 @@ const { withUserLock } = require('../structures/services/userLock');
 // เก็บข้อมูลผู้ใช้ใน voice channel
 const voiceUsers = new Map();
 
+// helper: แปลง userId เป็นชื่อที่อ่านง่าย
+function getUserLabel(client, guildId, userId) {
+    try {
+        const guild = client.guilds.cache.get(guildId);
+        const member = guild?.members?.cache?.get(userId);
+        return member?.user?.tag || member?.displayName || userId;
+    } catch (_) {
+        return userId;
+    }
+}
+
 // ฟังก์ชันเริ่มต้นระบบเงินจาก voice
-function initVoiceMoneySystem() {
+function initVoiceMoneySystem(client) {
     console.log('🎤 เริ่มต้นระบบเงินจาก Voice Channel...');
     
     // รันทุกนาที
@@ -45,7 +56,8 @@ function initVoiceMoneySystem() {
 
                     // อัปเดตหน่วยความจำ
                     userData.joinTime = now;
-                    console.log(`💰 ให้เงิน ${userId} จำนวน ${moneyToGive} เหรียญ (${timeSpent} นาที)`);
+                    const label = getUserLabel(client, userData.guildId, userId);
+                    console.log(`💰 ให้เงิน ${label} จำนวน ${moneyToGive} เหรียญ (${timeSpent} นาที)`);
                 }
             }
         } catch (error) {
@@ -57,7 +69,7 @@ function initVoiceMoneySystem() {
 }
 
 // ฟังก์ชันเพิ่มผู้ใช้ใน voice channel
-async function addUserToVoice(guildId, userId) {
+async function addUserToVoice(client, guildId, userId) {
     const now = Date.now();
     voiceUsers.set(userId, { guildId, joinTime: now });
     try {
@@ -67,11 +79,13 @@ async function addUserToVoice(guildId, userId) {
             { upsert: true }
         );
     } catch (e) { console.error('VOICE_DB addUser error:', e); }
-    console.log(`🎤 ผู้ใช้ ${userId} เข้า voice channel ใน guild ${guildId}`);
+    const label = getUserLabel(client, guildId, userId);
+    console.log(`🎤 ผู้ใช้ ${label} เข้า voice channel ใน guild ${guildId}`);
 }
 
 // ฟังก์ชันลบผู้ใช้ออกจาก voice channel
-async function removeUserFromVoice(guildId, userId) {
+// reason: 'leave' | 'switch'  (switch = ย้ายห้อง ไม่ถือว่าออกทั้งหมด)
+async function removeUserFromVoice(client, guildId, userId, reason = 'leave') {
     const userData = voiceUsers.get(userId);
     try {
         // อ่าน joinTime จาก DB เพื่อคำนวณย้อนหลังแม้ process จะเคยดับ
@@ -88,14 +102,23 @@ async function removeUserFromVoice(guildId, userId) {
                         { upsert: true, new: true }
                     );
                 });
-                console.log(`💰 จ่ายก่อนออก ${userId} จำนวน ${moneyToGive} เหรียญ (${timeSpent} นาที)`);
+                const label = getUserLabel(client, guildId, userId);
+                if (reason === 'leave') {
+                    console.log(`💰 จ่ายก่อนออก ${label} จำนวน ${moneyToGive} เหรียญ (${timeSpent} นาที)`);
+                } else {
+                    console.log(`💰 คำนวณเงินก่อนย้ายห้อง ${label} จำนวน ${moneyToGive} เหรียญ (${timeSpent} นาที)`);
+                }
             }
         }
     } catch (e) { console.error('VOICE_DB removeUser error:', e); }
     finally {
-        voiceUsers.delete(userId);
-        try { await VoiceSession.deleteOne({ guild: guildId, user: userId }); } catch {}
-        console.log(`🎤 ผู้ใช้ ${userId} ออกจาก voice channel ใน guild ${guildId}`);
+        // ถ้าเป็นการย้ายห้อง ไม่ควรลบ session และไม่ log ว่าออก
+        if (reason === 'leave') {
+            voiceUsers.delete(userId);
+            try { await VoiceSession.deleteOne({ guild: guildId, user: userId }); } catch {}
+            const label = getUserLabel(client, guildId, userId);
+            console.log(`🎤 ผู้ใช้ ${label} ออกจาก voice channel ใน guild ${guildId}`);
+        }
     }
 }
 
