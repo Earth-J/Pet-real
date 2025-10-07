@@ -196,6 +196,12 @@ const { ApplicationCommandOptionType, REST, Routes, ApplicationCommandManager } 
   }
 
   console.info(`Interactions shared!`);
-})();
+  
+  // Exit the process to prevent hanging
+  process.exit(0);
+})().catch((error) => {
+  console.error('Error during deployment:', error);
+  process.exit(1);
+});
 
 /// Credit https://github.com/akanora/Youtube-Together (Handler) || Edit by: https://github.com/Adivise
