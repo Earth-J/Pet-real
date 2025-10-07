@@ -16,6 +16,13 @@ const profile = Schema({
     inventory: {
         type: Number,
         default: 100
+    },
+    baccarat: {
+        wins: { type: Number, default: 0 },
+        losses: { type: Number, default: 0 },
+        ties: { type: Number, default: 0 },
+        rounds: { type: Number, default: 0 },
+        net: { type: Number, default: 0 }
     }
 });
 
