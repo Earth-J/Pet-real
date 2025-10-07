@@ -1,7 +1,10 @@
-const { EmbedBuilder, ApplicationCommandOptionType } = require("discord.js");
+const { EmbedBuilder, ApplicationCommandOptionType, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require("discord.js");
 const https = require("https");
 const vm = require("vm");
 const GProfile = require("../../settings/models/profile.js");
+const GuildState = require("../../settings/models/guildState.js");
+const { buildBigRoadColumns, buildDerivedRoadColumns, renderBigRoadGrid, renderDerivedGrid, predictDerivedColor } = require("../../structures/utils/roads.js");
+const { renderRoadsComposite } = require("../../structures/utils/roadsCanvas.js");
 
 // Per-user lock to prevent concurrent requests
 const userLocks = new Map();
@@ -51,7 +54,7 @@ function renderHiddenHand(count) { return Array.from({ length: count }, renderBa
 const OUTCOME_WEIGHTS = {
     win: 0.44,
     lose: 0.51,
-    tie: 0.05, // tie means round result = tie
+    tie: 0.001, // tie means round result = tie
 };
 
 function pickWeighted(weights) {
@@ -401,6 +404,58 @@ function renderHand(cards) {
     return cards.map(renderCard).join(" ");
 }
 
+// ==========================
+// Per-guild baccarat room (batch round)
+// ==========================
+const guildRooms = new Map(); // guildId -> { participants: Map<userId,{bet,side,username}>, status, deadline, timer }
+const ROOM_WAIT_MS = 30_000; // 30 seconds collecting bets
+
+function getOrCreateRoom(guildId) {
+    let room = guildRooms.get(guildId);
+    if (!room || room.status === "settling") {
+        room = {
+            participants: new Map(),
+            status: "collecting",
+            createdAt: Date.now(),
+            deadline: Date.now() + ROOM_WAIT_MS,
+            timer: null,
+        };
+        guildRooms.set(guildId, room);
+    }
+    return room;
+}
+
+function roomTimeLeftMs(room) {
+    return Math.max(0, (room?.deadline || 0) - Date.now());
+}
+
+// ==========================
+// Guild outcome history (Big Road) - persisted in MongoDB
+// ==========================
+const MAX_HISTORY = 70; // keep up to 70 rounds per guild
+
+async function appendGuildOutcome(guildId, winner) {
+    if (!guildId) return;
+    let symbol = null;
+    if (winner === "banker") symbol = "B";
+    else if (winner === "player") symbol = "P";
+    if (!symbol) return; // ignore ties
+    await GuildState.updateOne(
+        { guild: guildId },
+        { $push: { baccaratHistory: { $each: [symbol], $slice: -MAX_HISTORY } } },
+        { upsert: true }
+    );
+}
+
+async function getGuildHistory(guildId) {
+    const doc = await GuildState.findOne({ guild: guildId }, { baccaratHistory: 1 }).lean();
+    return Array.isArray(doc?.baccaratHistory) ? doc.baccaratHistory : [];
+}
+
+// Build a simplified Big Road grid from outcome sequence
+// Returns an array of columns; each column is a vertical list (top-down) of symbols
+// (Big Road/Derived rendering now imported from utils)
+
 module.exports = {
     name: ["บาคาร่า"],
     description: "เล่นบาคาร่า เดิมพัน Player/Banker/Tie",
@@ -429,30 +484,9 @@ module.exports = {
         const user = interaction.user;
         const guildId = interaction.guild.id;
 
-        // Check if user is already playing
-        if (isLocked(user.id)) {
-            return interaction.reply({ 
-                content: "⏳ คุณกำลังเล่นบาคาร่าอยู่ กรุณารอให้รอบปัจจุบันเสร็จสิ้น", 
-                ephemeral: true 
-            });
-        }
-
-        // Acquire lock
-        if (!acquireLock(user.id)) {
-            return interaction.reply({ 
-                content: "⏳ คุณกำลังเล่นบาคาร่าอยู่ กรุณารอให้รอบปัจจุบันเสร็จสิ้น", 
-                ephemeral: true 
-            });
-        }
+        // Room-based: no per-user lock; we use room phases
 
         try {
-            // Check interaction age before deferring
-            const interactionAge = Date.now() - interaction.createdTimestamp;
-            if (interactionAge > 3000) { // 3 seconds
-                console.warn(`[BACCARAT] Interaction too old: ${interactionAge}ms, skipping`);
-                return;
-            }
-
             await interaction.deferReply();
 
             // Get bet amount and side from command options
@@ -463,7 +497,16 @@ module.exports = {
                 return interaction.editReply({ content: `เดิมพันต้องอยู่ระหว่าง **${MIN_BET}** ถึง **${MAX_BET}** เท่านั้น` });
             }
 
-            // Atomic balance decrement
+            // Join or create room
+            let room = getOrCreateRoom(guildId);
+            if (room.status !== "collecting") {
+                return interaction.editReply({ content: `มีรอบกำลังเปิดไพ่ กรุณารอให้จบก่อนแล้วค่อยเดิมพันรอบถัดไป` });
+            }
+            if (room.participants.has(user.id)) {
+                return interaction.editReply({ content: `คุณได้เข้าร่วมรอบนี้แล้ว กรุณารอผล` });
+            }
+
+            // Atomic balance decrement to join
             const decRes = await GProfile.updateOne(
                 { guild: guildId, user: user.id, money: { $gte: bet } },
                 { $inc: { money: -bet } }
@@ -472,21 +515,164 @@ module.exports = {
                 return interaction.editReply({ content: `ยอดเงินไม่เพียงพอสำหรับเดิมพันนี้` });
             }
 
-            try {
-            const engineFactory = await loadBaccaratEngine();
-            const engine = engineFactory();
+            room.participants.set(user.id, { bet, side, username: user.username });
 
-            // Play one round using engine API from sample usage
-            // Expect engine.playRound() to return { player: [cards], banker: [cards], winner: 'player'|'banker'|'tie', points: { player, banker } }
-            const rawPlay = engine.playRound ? () => engine.playRound() : () => engine();
-            const existingProfile = await GProfile.findOne({ guild: guildId, user: user.id }, { baccarat: 1 }).lean();
-            const userOutcomeWeights = deriveUserOutcomeWeights(existingProfile);
-            const result = playRoundBiasedByOutcome(rawPlay, side, userOutcomeWeights);
+            // Start timer if not started
+            if (!room.timer) {
+                room.deadline = Date.now() + ROOM_WAIT_MS;
+                room.timer = setTimeout(async () => {
+                    // Settle the room
+                    const currentRoom = guildRooms.get(guildId);
+                    if (!currentRoom || currentRoom.status !== "collecting") return;
+                    currentRoom.status = "settling";
+                    try {
+                        const engineFactory = await loadBaccaratEngine();
+                        const engine = engineFactory();
+                        const rawPlay = engine.playRound ? () => engine.playRound() : () => engine();
+                        const result = rawPlay();
+                        const playerHand = result.player || result.playerHand || [];
+                        const bankerHand = result.banker || result.bankerHand || [];
+                        const winner = (result.winner || "").toLowerCase();
+                        const points = result.points || { player: undefined, banker: undefined };
 
-            const playerHand = result.player || result.playerHand || [];
-            const bankerHand = result.banker || result.bankerHand || [];
-            const winner = (result.winner || "").toLowerCase();
-            const points = result.points || { player: undefined, banker: undefined };
+                        // Animated reveal to channel
+                        const baseEmbed = new EmbedBuilder()
+                            .setAuthor({ name: `Baccarat | เปิดไพ่...`, iconURL: interaction.guild.iconURL() || undefined })
+                            .setTitle(`แจกไพ่...`)
+                            .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/Dealer.png")
+                            .setColor(0x5865f2)
+                            .setDescription([
+                                `Player: ${[renderBackCard(), renderBackCard(), renderBackCard()].join(" ")}`,
+                                `Banker: ${[renderBackCard(), renderBackCard(), renderBackCard()].join(" ")}`,
+                            ].join("\n"));
+                        const msg = await interaction.followUp({ embeds: [baseEmbed] });
+
+                        const pDisplay = [renderBackCard(), renderBackCard(), renderBackCard()];
+                        const bDisplay = [renderBackCard(), renderBackCard(), renderBackCard()];
+                        const makeFrame = (title) => {
+                            const lines = [
+                                `Player: ${pDisplay.join(" ")}`,
+                                `Banker: ${bDisplay.join(" ")}`,
+                            ];
+                            return new EmbedBuilder()
+                                .setAuthor({ name: `Baccarat | เปิดไพ่...`, iconURL: interaction.guild.iconURL() || undefined })
+                                .setTitle(title)
+                                .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/Dealer.png")
+                                .setColor(0x5865f2)
+                                .setDescription(lines.join("\n"));
+                        };
+                        if (playerHand[0]) { pDisplay[0] = renderCard(playerHand[0]); await sleep(REVEAL_STEP_DELAY); await interaction.editReply ? null : null; await msg.edit({ embeds: [makeFrame("เปิดไพ่...")] }); }
+                        if (bankerHand[0]) { bDisplay[0] = renderCard(bankerHand[0]); await sleep(REVEAL_STEP_DELAY); await msg.edit({ embeds: [makeFrame("เปิดไพ่...")] }); await sleep(1000); }
+                        if (playerHand[1]) { pDisplay[1] = renderCard(playerHand[1]); await sleep(REVEAL_STEP_DELAY); await msg.edit({ embeds: [makeFrame("เปิดไพ่...")] }); }
+                        if (bankerHand[1]) { bDisplay[1] = renderCard(bankerHand[1]); await sleep(REVEAL_STEP_DELAY); await msg.edit({ embeds: [makeFrame("เปิดไพ่...")] }); }
+                        if (playerHand[2]) { pDisplay[2] = renderCard(playerHand[2]); await sleep(REVEAL_STEP_DELAY); await msg.edit({ embeds: [makeFrame("เปิดไพ่...")] }); await sleep(800); }
+                        if (bankerHand[2]) { bDisplay[2] = renderCard(bankerHand[2]); await sleep(REVEAL_STEP_DELAY); await msg.edit({ embeds: [makeFrame("เปิดไพ่...")] }); await sleep(800); }
+
+                        // Compute returns per participant
+                        const updates = [];
+                        for (const [uid, p] of currentRoom.participants.entries()) {
+                            let grossReturn = 0;
+                            if (winner === "player") {
+                                if (p.side === "player") grossReturn = Math.floor(p.bet * 2);
+                            } else if (winner === "banker") {
+                                if (p.side === "banker") grossReturn = Math.floor(p.bet * 1.95);
+                            } else if (winner === "tie") {
+                                if (p.side === "tie") grossReturn = Math.floor(p.bet * 9);
+                                else grossReturn = p.bet; // push
+                            }
+                            if (grossReturn > 0) {
+                                updates.push(GProfile.updateOne({ guild: guildId, user: uid }, { $inc: { money: grossReturn } }));
+                            }
+                        }
+                        if (updates.length) await Promise.allSettled(updates);
+
+                        // Record outcome to roads
+                        await appendGuildOutcome(guildId, winner);
+                        const guildHistory = await getGuildHistory(guildId);
+                        const bigCols = buildBigRoadColumns(guildHistory, 6);
+                        const bigEyeCols = buildDerivedRoadColumns(bigCols, 1, 6);
+                        const smallCols = buildDerivedRoadColumns(bigCols, 2, 6);
+                        const cockroachCols = buildDerivedRoadColumns(bigCols, 3, 6);
+                        let roadsAttachment = null;
+                        try {
+                            const png = await renderRoadsComposite({
+                                widthCols: 36,
+                                heightRows: 6,
+                                bigRoadColumns: bigCols,
+                                bigEyeColumns: bigEyeCols,
+                                smallColumns: smallCols,
+                                cockroachColumns: cockroachCols,
+                                askPredict: {
+                                    bigEye: {
+                                        B: predictDerivedColor(bigCols, 'B', 1, 6),
+                                        P: predictDerivedColor(bigCols, 'P', 1, 6),
+                                    },
+                                    small: {
+                                        B: predictDerivedColor(bigCols, 'B', 2, 6),
+                                        P: predictDerivedColor(bigCols, 'P', 2, 6),
+                                    },
+                                    cockroach: {
+                                        B: predictDerivedColor(bigCols, 'B', 3, 6),
+                                        P: predictDerivedColor(bigCols, 'P', 3, 6),
+                                    },
+                                },
+                            });
+                            if (png) {
+                                const name = `roads_${guildId}.png`;
+                                roadsAttachment = { attachment: Buffer.from(png), name };
+                            }
+                        } catch (_) {}
+
+                        // Build summary embed
+                        const summary = [];
+                        for (const [uid, p] of currentRoom.participants.entries()) {
+                            let grossReturn = 0;
+                            if (winner === "player") {
+                                if (p.side === "player") grossReturn = Math.floor(p.bet * 2);
+                            } else if (winner === "banker") {
+                                if (p.side === "banker") grossReturn = Math.floor(p.bet * 1.95);
+                            } else if (winner === "tie") {
+                                if (p.side === "tie") grossReturn = Math.floor(p.bet * 9);
+                                else grossReturn = p.bet;
+                            }
+                            const net = grossReturn - p.bet;
+                            summary.push(`• ${p.username}: ${p.side.toUpperCase()} | เดิมพัน ${p.bet} | สุทธิ ${net >= 0 ? `+${net}` : `${net}`}`);
+                        }
+
+                        const resultEmbed = new EmbedBuilder()
+                            .setAuthor({ name: `Baccarat | รอบรวมผู้เล่น`, iconURL: interaction.guild.iconURL() || undefined })
+                            .setTitle(`ผลลัพธ์บาคาร่า`)
+                            .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/Dealer.png")
+                            .setColor(winner === "player" ? 0x5865f2 : winner === "banker" ? 0xd83c3e : 0x3ba55c)
+                            .setDescription([
+                                `ผู้ชนะ: **${winner.toUpperCase()}**`,
+                                `Player: ${renderHand(playerHand)} ${points.player !== undefined ? `(${points.player})` : ""}`,
+                                `Banker: ${renderHand(bankerHand)} ${points.banker !== undefined ? `(${points.banker})` : ""}`,
+                                "",
+                                ...summary,
+                            ].join("\n"));
+
+                        if (roadsAttachment) {
+                            const roadsEmbed = new EmbedBuilder().setColor(0x5865f2).setImage(`attachment://${roadsAttachment.name}`);
+                            await interaction.followUp({ embeds: [resultEmbed, roadsEmbed], files: [roadsAttachment] });
+                        } else {
+                            await interaction.followUp({ embeds: [resultEmbed] });
+                        }
+                        try { await msg.delete(); } catch (_) {}
+                    } catch (e) {
+                        console.error("Room settle error:", e);
+                    } finally {
+                        // reset room
+                        clearTimeout(currentRoom.timer);
+                        guildRooms.delete(guildId);
+                    }
+                }, roomTimeLeftMs(room));
+            }
+
+            const secondsLeft = Math.ceil(roomTimeLeftMs(room) / 1000);
+            return interaction.editReply({ content: `เข้าร่วมรอบแล้ว | ฝั่ง: **${side.toUpperCase()}** | เดิมพัน: **${bet}** | จะเปิดไพ่ใน ${secondsLeft}s` });
+            
+            // Old single-round per-user flow removed in room mode
 
             let grossReturn = 0;
             if (winner === "player") {
@@ -588,7 +774,44 @@ module.exports = {
                 .setFooter({ text: `ขั้นต่ำ: ⏣ ${MIN_BET} | สูงสุด: ⏣ ${MAX_BET}` });
 
             await sleep(1000);
-            await interaction.editReply({ embeds: [resultEmbed] });
+            // Record outcome for guild Big Road (ignore ties) and read history
+            await appendGuildOutcome(guildId, winner);
+            const guildHistory = await getGuildHistory(guildId);
+            const bigCols = buildBigRoadColumns(guildHistory, 6);
+            const bigRoadText = renderBigRoadGrid(guildHistory, 6, 12);
+            const bigEye = renderDerivedGrid(bigCols, 1, 6, 12);
+            const smallRoad = renderDerivedGrid(bigCols, 2, 6, 12);
+            const cockroach = renderDerivedGrid(bigCols, 3, 6, 12);
+
+            const roadsEmbed = new EmbedBuilder()
+                .setAuthor({ name: `${user.username} | Roads`, iconURL: user.displayAvatarURL() })
+                .setColor(0x5865f2);
+
+            // Try canvas composite (optional)
+            let roadsAttachment = null;
+            try {
+                const bigEyeCols = buildDerivedRoadColumns(bigCols, 1, 6);
+                const smallCols = buildDerivedRoadColumns(bigCols, 2, 6);
+                const cockroachCols = buildDerivedRoadColumns(bigCols, 3, 6);
+                const png = await renderRoadsComposite({
+                    widthCols: 36,
+                    heightRows: 6,
+                    bigRoadColumns: bigCols,
+                    bigEyeColumns: bigEyeCols,
+                    smallColumns: smallCols,
+                    cockroachColumns: cockroachCols,
+                });
+                if (png) {
+                    const name = `roads_${guildId}.png`;
+                    roadsAttachment = { attachment: Buffer.from(png), name };
+                    roadsEmbed.setImage(`attachment://${name}`);
+                }
+            } catch (_) {}
+            if (roadsAttachment) {
+                await interaction.editReply({ embeds: [resultEmbed, roadsEmbed], files: [roadsAttachment] });
+            } else {
+                await interaction.editReply({ embeds: [resultEmbed] });
+            }
         } catch (err) {
             // Refund on failure
             try {
@@ -598,13 +821,6 @@ module.exports = {
                 );
             } catch (_) { }
             await interaction.editReply({ content: `เกิดข้อผิดพลาดในการเล่นบาคาร่า: ${err.message || err}` });
-        } finally {
-            // Always release the lock
-            releaseLock(user.id);
-        }
-        } catch (outerErr) {
-            console.error("Outer error in baccarat:", outerErr);
-            releaseLock(user.id);
         }
     }
 };
