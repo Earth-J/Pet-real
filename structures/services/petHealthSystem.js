@@ -17,10 +17,22 @@ const STAT_RANGES = {
 function calculateHealth(petDoc) {
     if (!petDoc) return STAT_RANGES.DEFAULT;
 
-    const affection = Number(petDoc.affection ?? 0);
-    const fullness = Number(petDoc.fullness ?? 0);
-    const dirtiness = Number(petDoc.dirtiness ?? 0);
-    const fatigue = Number(petDoc.fatigue ?? 0);
+    // Fallback สำหรับข้อมูลเก่า: แปลงจากระบบเก่าเป็นระบบใหม่
+    let affection, fullness, dirtiness, fatigue;
+    
+    if (typeof petDoc.affection !== 'undefined') {
+        // ใช้ระบบใหม่
+        affection = Number(petDoc.affection ?? 0);
+        fullness = Number(petDoc.fullness ?? 0);
+        dirtiness = Number(petDoc.dirtiness ?? 0);
+        fatigue = Number(petDoc.fatigue ?? 0);
+    } else {
+        // ใช้ระบบเก่า + แปลงเป็นระบบใหม่
+        affection = Number(petDoc.health ?? 20);           // health → affection
+        fullness = Number(petDoc.hungry ?? 20);            // hungry → fullness
+        dirtiness = Math.max(0, 20 - Number(petDoc.cleanliness ?? 20)); // cleanliness → dirtiness (inverted)
+        fatigue = Math.max(0, 20 - Number(petDoc.sleep ?? 20));       // sleep → fatigue (inverted)
+    }
 
     // คำนวณคะแนนสุขภาพสำหรับแต่ละค่า (0-1)
     const affectionScore = affection / STAT_RANGES.MAX;
