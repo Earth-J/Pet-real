@@ -35,7 +35,7 @@ module.exports = {
         // ตรวจสอบ cooldown
         const cooldownRemaining = checkCooldown(interaction.user.id);
         if (cooldownRemaining > 0) {
-            return interaction.editReply(`⏰ คุณต้องรอ **${cooldownRemaining} วินาที** ก่อนที่จะให้อาหารสัตว์เลี้ยงได้อีกครั้ง`);
+            return interaction.editReply(`⏰ สัตว์เลี้ยงของคุณกินต่อไม่ไหวเเล้ว รอ **${cooldownRemaining} วินาที** `);
         }
 
         const loadingEmbed = new EmbedBuilder()
@@ -197,6 +197,21 @@ async function processFeedAction(client, interaction, msg, itemId, inv) {
                 .setDescription(`รายละเอียด: ${result.error || 'ไม่ทราบสาเหตุ'}`)
                 .setColor('#ff6961');
             return msg.edit({ embeds: [embedErr], components: [] });
+        }
+
+        // ลบอาหารออกจากกระเป๋าหลังจากให้อาหารสำเร็จ
+        try {
+            // หาตำแหน่งของอาหารในอาร์เรย์
+            const foodIndex = inv.item.findIndex(x => x.id === itemId);
+            if (foodIndex !== -1) {
+                // ลบอาหารออกจากอาร์เรย์
+                inv.item.splice(foodIndex, 1);
+                // บันทึกการเปลี่ยนแปลงลงฐานข้อมูล
+                await inv.save();
+            }
+        } catch (error) {
+            console.error('Error removing food from inventory:', error);
+            // ไม่ต้องหยุดการทำงานถ้าลบอาหารไม่สำเร็จ แค่ log error
         }
 
         // สร้าง embed
