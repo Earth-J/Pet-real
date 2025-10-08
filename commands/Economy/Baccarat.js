@@ -648,6 +648,19 @@ const MAX_HISTORY = 70; // keep up to 70 rounds per guild
 
 async function appendGuildOutcome(guildId, winner, tieMark) {
     if (!guildId) return;
+    // Reset history (hard reset) once it reaches MAX_HISTORY entries
+    try {
+        const doc = await GuildState.findOne({ guild: guildId }, { baccaratHistory: 1 }).lean();
+        const currentLen = Array.isArray(doc?.baccaratHistory) ? doc.baccaratHistory.length : 0;
+        if (currentLen >= MAX_HISTORY) {
+            await GuildState.updateOne(
+                { guild: guildId },
+                { $set: { baccaratHistory: [], tieMarks: [] } },
+                { upsert: true }
+            );
+        }
+    } catch (_) {}
+
     let symbol = null;
     if (winner === "banker") symbol = "B";
     else if (winner === "player") symbol = "P";
@@ -655,7 +668,7 @@ async function appendGuildOutcome(guildId, winner, tieMark) {
     if (symbol) {
         await GuildState.updateOne(
             { guild: guildId },
-            { $push: { baccaratHistory: { $each: [symbol], $slice: -MAX_HISTORY } } },
+            { $push: { baccaratHistory: symbol } },
             { upsert: true }
         );
     }
