@@ -66,8 +66,8 @@ module.exports = {
         { emoji: "<:grape:1424813863873941524>",      weight: 20, payout3: 5 },
         { emoji: "<:apple:1424813838297202728>",      weight: 28, payout3: 3 },
         { emoji: "<:orange:1424813891124199535>",     weight: 28, payout3: 2 },
-        { emoji: "<:mango:1424813887261245510>",      weight: 26, payout3: 3 },
-        { emoji: "<:watermelon:1424813898489397268>", weight: 24, payout3: 3 },
+        { emoji: "<:mango:1424813887261245510>",      weight: 26, payout3: 4 },
+        { emoji: "<:watermelon:1424813898489397268>", weight: 24, payout3: 4 },
 
         // Hearts / Love
         { emoji: "<:heart:1424813868877877351>",      weight: 18, payout3: 5 },
