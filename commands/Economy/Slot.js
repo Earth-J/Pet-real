@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const GProfile = require("../../settings/models/profile.js");
 
 // ---- CONFIG ----
-const MIN_BET = 100;
+const MIN_BET = 10;
 const MAX_BET = 100000;
 const SPIN_FRAMES = 4;     // จำนวนเฟรมแอนิเมชัน (สุ่มผลไม้)
 const FRAME_DELAY = 450;   // ms/เฟรม
