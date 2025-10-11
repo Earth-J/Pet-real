@@ -31,7 +31,8 @@ function getRewardForLevel(level) {
 function createRewardEmbed(pet, currentPage, totalPages) {
     const level = REWARD_LEVELS[currentPage];
     const reward = getRewardForLevel(level);
-    const isClaimed = pet.claimedRewards.includes(level);
+    const claimedRewards = pet.claimedRewards || [];
+    const isClaimed = claimedRewards.includes(level);
     const canClaim = pet.level >= level && !isClaimed;
     
     let statusEmoji = "";
@@ -66,7 +67,8 @@ function createRewardEmbed(pet, currentPage, totalPages) {
 // สร้างปุ่มสำหรับ navigation และการรับรางวัล
 function createButtons(pet, currentPage, totalPages) {
     const level = REWARD_LEVELS[currentPage];
-    const isClaimed = pet.claimedRewards.includes(level);
+    const claimedRewards = pet.claimedRewards || [];
+    const isClaimed = claimedRewards.includes(level);
     const canClaim = pet.level >= level && !isClaimed;
     
     const row = new ActionRowBuilder()
@@ -171,7 +173,8 @@ module.exports = {
                         console.log(`[PetRewards] User ${user.id} attempting to claim level ${rewardLevel} reward`);
                         
                         // ตรวจสอบว่ารับรางวัลไปแล้วหรือยัง
-                        if (updatedPet.claimedRewards.includes(rewardLevel)) {
+                        const petClaimedRewards = updatedPet.claimedRewards || [];
+                        if (petClaimedRewards.includes(rewardLevel)) {
                             console.log(`[PetRewards] Reward ${rewardLevel} already claimed`);
                             return i.reply({
                                 content: "❌ คุณรับรางวัลนี้ไปแล้ว!",
