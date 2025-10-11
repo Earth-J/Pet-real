@@ -50,7 +50,7 @@ function createRewardEmbed(pet, currentPage, totalPages) {
     }
     
     const embed = new EmbedBuilder()
-        .setTitle(`${statusEmoji} รางวัลระดับ ${level}`)
+        .setTitle(`${statusEmoji} รางวัลเลเวล ${level}`)
         .setDescription(`**รางวัล:**\n${reward.description}`)
         .addFields(
             { name: "สถานะ", value: statusText, inline: true },
