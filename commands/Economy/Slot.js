@@ -10,7 +10,7 @@ const FRAME_DELAY = 450;   // ms/เฟรม
 const REVEAL_DELAY = 500;  // ms หลังแอนิเมชันก่อนแสดงผลจริง
 
 // แก้จากจ่ายคูณคงที่ -> เป็นสัดส่วนของ payout3 ของสัญลักษณ์ที่เป็นคู่
-const PAIR_RATE = 0.50;    // คู่ได้ 25% ของอัตราจ่ายเต็ม (ปรับได้)
+const PAIR_RATE = 0.85;    // คู่ได้ 85% ของอัตราจ่ายเต็ม (เล่นง่ายมาก)
 
 const USER_LOCK = new Set(); // ป้องกันผู้ใช้กดซ้อน
 
@@ -60,30 +60,26 @@ module.exports = {
 
       // ตารางสัญลักษณ์ + น้ำหนัก + จ่าย (สามตัวเหมือน)
       const symbols = [
-        // Fruits (common)
-        { emoji: "<:cherry:1424813850565283851>",     weight: 35, payout3: 2 },
-        { emoji: "<:lemon:1424813878725841036>",      weight: 25, payout3: 3 },
-        { emoji: "<:grape:1424813863873941524>",      weight: 20, payout3: 5 },
-        { emoji: "<:apple:1424813838297202728>",      weight: 28, payout3: 3 },
-        { emoji: "<:orange:1424813891124199535>",     weight: 28, payout3: 2 },
-        { emoji: "<:mango:1424813887261245510>",      weight: 26, payout3: 4 },
-        { emoji: "<:watermelon:1424813898489397268>", weight: 24, payout3: 4 },
+        // Fruits (common) - ลดน้ำหนักมากๆ
+        { emoji: "<:cherry:1424813850565283851>",     weight: 8,  payout3: 2.5 },
+        { emoji: "<:grape:1424813863873941524>",      weight: 6,  payout3: 4 },
+        { emoji: "<:watermelon:1424813898489397268>", weight: 6,  payout3: 3.5 },
 
-        // Hearts / Love
-        { emoji: "<:heart:1424813868877877351>",      weight: 18, payout3: 5 },
-        { emoji: "<:love:1424394386497601687>",       weight: 16, payout3: 6 },
+        // Hearts / Love - เพิ่มโอกาสมาก
+        { emoji: "<:heart:1424813868877877351>",      weight: 30, payout3: 4 },
+        { emoji: "<:love:1424394386497601687>",       weight: 28, payout3: 6 },
 
-        // Coins / Misc
-        { emoji: "<:coin:1424813855145721907>",       weight: 14, payout3: 4 },
-        { emoji: "<:question:1424813894823579670>",   weight: 12, payout3: 6 },
+        // Coins / Misc - เพิ่มโอกาสมาก
+        { emoji: "<:coin:1424813855145721907>",       weight: 26, payout3: 5 },
+        { emoji: "<:question:1424813894823579670>",   weight: 24, payout3: 7 },
 
-        // Lucky symbols
-        { emoji: "<:horseshoe:1424813873621630976>",  weight: 14, payout3: 8 },
-        { emoji: "<:bell:1424813845624651938>",       weight: 12, payout3: 10 },
-        { emoji: "<:bar:1424813841275027606>",        weight: 10, payout3: 12 },
-        { emoji: "<:lucky:1424813883280851034>",      weight: 9,  payout3: 15 },
-        { emoji: "<:diamond:1424813858865942558>",    weight: 8,  payout3: 25 },
-        { emoji: "<:7_:1424813834266476685>",         weight: 5,  payout3: 50 },
+        // Lucky symbols - เพิ่มโอกาสมาก
+        { emoji: "<:horseshoe:1424813873621630976>",  weight: 22, payout3: 9 },
+        { emoji: "<:bell:1424813845624651938>",       weight: 20, payout3: 12 },
+        { emoji: "<:bar:1424813841275027606>",        weight: 18, payout3: 15 },
+        { emoji: "<:lucky:1424813883280851034>",      weight: 16, payout3: 18 },
+        { emoji: "<:diamond:1424813858865942558>",    weight: 14, payout3: 30 },
+        { emoji: "<:7_:1424813834266476685>",         weight: 10, payout3: 60 },
       ];
 
       const totalWeight = symbols.reduce((s, x) => s + x.weight, 0);
