@@ -168,9 +168,11 @@ module.exports = {
                         });
                     } else if (type === 'claim') {
                         const rewardLevel = parseInt(value);
+                        console.log(`[PetRewards] User ${user.id} attempting to claim level ${rewardLevel} reward`);
                         
                         // ตรวจสอบว่ารับรางวัลไปแล้วหรือยัง
                         if (updatedPet.claimedRewards.includes(rewardLevel)) {
+                            console.log(`[PetRewards] Reward ${rewardLevel} already claimed`);
                             return i.reply({
                                 content: "❌ คุณรับรางวัลนี้ไปแล้ว!",
                                 ephemeral: true
@@ -179,6 +181,7 @@ module.exports = {
                         
                         // ตรวจสอบว่าระดับถึงหรือยัง
                         if (updatedPet.level < rewardLevel) {
+                            console.log(`[PetRewards] Pet level ${updatedPet.level} < required ${rewardLevel}`);
                             return i.reply({
                                 content: `❌ สัตว์เลี้ยงของคุณต้องอยู่ในระดับ ${rewardLevel} หรือสูงกว่า!`,
                                 ephemeral: true
@@ -187,22 +190,38 @@ module.exports = {
                         
                         // รับรางวัล
                         const reward = getRewardForLevel(rewardLevel);
+                        console.log(`[PetRewards] Reward details:`, reward);
                         
                         // อัพเดทโปรไฟล์ผู้เล่น
                         let profile = await GProfile.findOne({ guild: guild.id, user: user.id });
                         if (!profile) {
-                            await client.createProfile(guild.id, user.id);
-                            profile = await GProfile.findOne({ guild: guild.id, user: user.id });
+                            console.log(`[PetRewards] Creating new profile for user ${user.id}`);
+                            // สร้างโปรไฟล์ใหม่
+                            profile = new GProfile({
+                                guild: guild.id,
+                                user: user.id,
+                                money: 0,
+                                tokens: 0
+                            });
                         }
                         
-                        profile.money = (profile.money || 0) + reward.money;
+                        const oldMoney = profile.money || 0;
+                        const oldTokens = profile.tokens || 0;
+                        
+                        profile.money = oldMoney + reward.money;
                         if (reward.tokens > 0) {
-                            profile.tokens = (profile.tokens || 0) + reward.tokens;
+                            profile.tokens = oldTokens + reward.tokens;
                         }
+                        
+                        console.log(`[PetRewards] Updating profile: money ${oldMoney} -> ${profile.money}, tokens ${oldTokens} -> ${profile.tokens}`);
                         await profile.save();
                         
                         // อัพเดทข้อมูล pet
+                        if (!updatedPet.claimedRewards) {
+                            updatedPet.claimedRewards = [];
+                        }
                         updatedPet.claimedRewards.push(rewardLevel);
+                        console.log(`[PetRewards] Marking reward ${rewardLevel} as claimed`);
                         await updatedPet.save();
                         
                         // ส่งข้อความยืนยัน
@@ -220,12 +239,15 @@ module.exports = {
                             embeds: [newEmbed],
                             components: [newButtons]
                         });
+                        
+                        console.log(`[PetRewards] Reward ${rewardLevel} claimed successfully`);
                     }
                 } catch (err) {
-                    console.error("Error handling reward button:", err);
+                    console.error("[PetRewards] Error handling reward button:", err);
+                    console.error("[PetRewards] Error stack:", err.stack);
                     if (!i.replied && !i.deferred) {
                         await i.reply({
-                            content: "❌ เกิดข้อผิดพลาดในการดำเนินการ",
+                            content: `❌ เกิดข้อผิดพลาด: ${err.message}`,
                             ephemeral: true
                         });
                     }
