@@ -15,7 +15,7 @@ function getRewardForLevel(level) {
     const money = (lastDigit === 0) ? 10000 : 5000; // ลงท้าย 0 ได้ 10K, ลงท้าย 5 ได้ 5K
     const tokens = (lastDigit === 0) ? 250 : 0; // ได้ token เฉพาะเลเวลลงท้ายด้วย 0
     
-    let description = `<:706219192923455549:1312400668056748032> ${money.toLocaleString('th-TH')} เหรียญ`;
+    let description = `<:706219192923455549:1312400668056748032> ${money.toLocaleString('th-TH')} บาท`;
     if (tokens > 0) {
         description += ` + 🎫 ${tokens} โทเค็น`;
     }
