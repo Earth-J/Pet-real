@@ -176,7 +176,7 @@ class PetBehaviorSystem {
     computeNextExp(level) {
         const lvl = Math.max(1, Number(level || 1));
         const base = 100; // ค่าตั้งต้น
-        const growth = 1.75; // อัตราเติบโตต่อเลเวล
+        const growth = 1.35; // อัตราเติบโตต่อเลเวล
         return Math.max(base, Math.floor(base * Math.pow(growth, lvl - 1)));
     }
 
