@@ -13,6 +13,7 @@ const { calculateHealth, getHealthStatus, getHealthDescription, getHealthAdvice,
 class PetGameLoop {
     constructor() {
         this.isRunning = false;
+        this.isTickRunning = false; // guard to prevent overlapping cron ticks
         this.tickCount = 0;
         this.lastTick = Date.now();
         this.stats = {
@@ -37,12 +38,19 @@ class PetGameLoop {
         // ปิดการใช้งาน PetBehaviorSystem เพื่อไม่ให้ซ้ำซ้อนกับ PetGameLoop
         // petBehaviorSystem.start(); // DISABLED: ใช้ PetGameLoop แทน
         
-        // รันทุกๆ 1 นาที
+        // รันทุกๆ 1 นาที (กันการซ้อนทับของรอบก่อนด้วย guard)
         cron.schedule('* * * * *', async () => {
+            if (this.isTickRunning) {
+                console.warn('[PET_GAME_LOOP] Previous tick still running, skipping this schedule');
+                return;
+            }
+            this.isTickRunning = true;
             try {
                 await this.processGameTick();
             } catch (error) {
                 console.error('[PET_GAME_LOOP] Error in game tick processing:', error);
+            } finally {
+                this.isTickRunning = false;
             }
         });
 

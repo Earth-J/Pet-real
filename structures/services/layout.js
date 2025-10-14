@@ -3,52 +3,128 @@ function pushIf(layers, condition, type, key, draw, extra = {}) {
   layers.push({ type, key, draw, ...extra });
 }
 
-function buildHouseLayers(home) {
+// CDN base for assets (match render-service default)
+const ASSET_BASE_URL = (process.env.ASSET_BASE_URL || 'https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main').replace(/\/$/, '');
+
+// Helper function to find secondary slot for 2x2 furniture
+function findSecondarySlot(home, section, number) {
+  // เช็คแนวนอน (ขวา)
+  const nextNumber = number + 1;
+  if (nextNumber <= 4 && home?.[`${section}_DATA`]?.[`${section}${nextNumber}I`] === "OCCUPIED") {
+    return `${section}${nextNumber}`;
+  }
+  
+  // เช็คแนวตั้ง (ล่าง)
+  const nextSection = String.fromCharCode(section.charCodeAt(0) + 1);
+  if (nextSection <= 'D' && home?.[`${nextSection}_DATA`]?.[`${nextSection}${number}I`] === "OCCUPIED") {
+    return `${nextSection}${number}`;
+  }
+  
+  return null;
+}
+
+// Helper function to push furniture layer with secondary slot info
+function pushFurniture(layers, home, section, number, x, y, w = 102, h = 149) {
+  const slotKey = `${section}${number}`;
+  const furnitureName = home?.[`${section}_DATA`]?.[`${slotKey}I`];
+  
+  if (!furnitureName || furnitureName === "OCCUPIED") return;
+  
+  const secondarySlot = findSecondarySlot(home, section, number);
+  // Use direct encoded URL to support names with spaces/special chars
+  const encodedName = encodeURIComponent(String(furnitureName));
+  const furnitureUrl = `${ASSET_BASE_URL}/furniture/${encodedName}.png`;
+  pushIf(layers, true, 'furniture', furnitureName, { x, y, w, h }, { slot: slotKey, secondarySlot, url: furnitureUrl });
+}
+
+function buildHouseLayers(home, options = {}) {
+  const { selectionOverlay = false } = options;
   const layers = [];
   const W = 300, H = 300;
+  
+  // Normalize missing sections to prevent undefined during previews
+  const safeHome = home || {};
+  if (!safeHome.FLOOR_DATA) safeHome.FLOOR_DATA = { FLOOR: false, FLOORI: '' };
+  if (!safeHome.TILE_DATA) safeHome.TILE_DATA = { TILE: false, TILEI: '' };
+  
+  console.log('buildHouseLayers called with home:', {
+    WALL_DATA: safeHome?.WALL_DATA,
+    FLOOR_DATA: safeHome?.FLOOR_DATA,
+    TILE_DATA: safeHome?.TILE_DATA
+  });
 
   // room background image (default)
   // ใช้ภาพพื้นหลังห้องเริ่มต้นถ้ามีในโปรเจกต์
   pushIf(layers, true, 'room-bg', 'default', { x: 0, y: 0, w: W, h: H }); // ใช้ CDN background
 
-  // floor
-  if (home?.FLOOR_DATA?.FLOOR && home.FLOOR_DATA.FLOORI) {
-    pushIf(layers, true, 'floor', home.FLOOR_DATA.FLOORI, { x: 0, y: 0, w: W, h: H });
+  // floor (use direct URL to avoid slug mismatch)
+  // Render if FLOORI exists, regardless of boolean flag, to match live preview behavior
+  if (safeHome?.FLOOR_DATA?.FLOORI) {
+    const floorKey = String(safeHome.FLOOR_DATA.FLOORI);
+    const floorUrl = `${ASSET_BASE_URL}/floor/${encodeURIComponent(floorKey)}.png`;
+    pushIf(layers, true, 'floor', floorKey, { x: 0, y: 0, w: W, h: H }, { url: floorUrl });
+    console.log('Added floor layer:', floorKey, floorUrl);
   }
 
-  // Walls - Left
-  pushIf(layers, !!home?.WALL_DATA?.L1I, 'wallpaper-left', home.WALL_DATA.L1I, { x: 6, y: 88, w: 37, h: 57 });
-  pushIf(layers, !!home?.WALL_DATA?.L2I, 'wallpaper-left', home.WALL_DATA.L2I, { x: 43, y: 71, w: 37, h: 57 });
-  pushIf(layers, !!home?.WALL_DATA?.L3I, 'wallpaper-left', home.WALL_DATA.L3I, { x: 79, y: 51, w: 37, h: 57 });
-  pushIf(layers, !!home?.WALL_DATA?.L4I, 'wallpaper-left', home.WALL_DATA.L4I, { x: 114, y: 32, w: 37, h: 57 });
+  // tile (use direct URL to avoid slug mismatch)
+  // Render if TILEI exists, regardless of boolean flag, to match live preview behavior
+  if (safeHome?.TILE_DATA?.TILEI) {
+    const tileKey = String(safeHome.TILE_DATA.TILEI);
+    const tileUrl = `${ASSET_BASE_URL}/tile/${encodeURIComponent(tileKey)}.png`;
+    pushIf(layers, true, 'tile', tileKey, { x: 0, y: 0, w: W, h: H }, { url: tileUrl });
+    console.log('Added tile layer:', tileKey, tileUrl);
+  }
 
-  // Walls - Right
-  pushIf(layers, !!home?.WALL_DATA?.R1I, 'wallpaper-right', home.WALL_DATA.R1I, { x: 150, y: 34, w: 37, h: 57 });
-  pushIf(layers, !!home?.WALL_DATA?.R2I, 'wallpaper-right', home.WALL_DATA.R2I, { x: 187, y: 51, w: 37, h: 57 });
-  pushIf(layers, !!home?.WALL_DATA?.R3I, 'wallpaper-right', home.WALL_DATA.R3I, { x: 222, y: 72, w: 37, h: 57 });
-  pushIf(layers, !!home?.WALL_DATA?.R4I, 'wallpaper-right', home.WALL_DATA.R4I, { x: 258, y: 98, w: 37, h: 57 });
+  // selection grid overlay (for position selection UI) - must be above floor/tile and below furniture
+  if (selectionOverlay) {
+    pushIf(layers, true, 'selection-overlay', 'select_Furnitureedit', { x: 0, y: 0, w: W, h: H }, {
+      url: 'https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/select_Furnitureedit.png',
+      blendMode: 'multiply',
+      opacity: 0.6
+    });
+  }
 
-  // Furniture - ลำดับจากไกลไปใกล้ (A4..A1, B4..B1, C4..C1, D4..D1)
-  pushIf(layers, !!home?.A_DATA?.A4I, 'furniture', home.A_DATA.A4I, { x: 119, y: 24, w: 102, h: 149 }, { slot: 'A4' });
-  pushIf(layers, !!home?.A_DATA?.A3I, 'furniture', home.A_DATA.A3I, { x: 82, y: 42, w: 102, h: 149 }, { slot: 'A3' });
-  pushIf(layers, !!home?.A_DATA?.A2I, 'furniture', home.A_DATA.A2I, { x: 45, y: 61, w: 102, h: 149 }, { slot: 'A2' });
-  pushIf(layers, !!home?.A_DATA?.A1I, 'furniture', home.A_DATA.A1I, { x: 8, y: 79, w: 102, h: 149 }, { slot: 'A1' });
+  // A slots
+  pushFurniture(layers, safeHome, 'A', 4, 119, 24 + 24);
+  pushFurniture(layers, safeHome, 'A', 3, 82, 42 + 24);
+  pushFurniture(layers, safeHome, 'A', 2, 45, 61 + 24);
+  pushFurniture(layers, safeHome, 'A', 1, 8, 79 + 24);
 
-  pushIf(layers, !!home?.B_DATA?.B4I, 'furniture', home.B_DATA.B4I, { x: 155, y: 41, w: 102, h: 149 }, { slot: 'B4' });
-  pushIf(layers, !!home?.B_DATA?.B3I, 'furniture', home.B_DATA.B3I, { x: 118, y: 60, w: 102, h: 149 }, { slot: 'B3' });
-  pushIf(layers, !!home?.B_DATA?.B2I, 'furniture', home.B_DATA.B2I, { x: 81, y: 79, w: 102, h: 149 }, { slot: 'B2' });
-  pushIf(layers, !!home?.B_DATA?.B1I, 'furniture', home.B_DATA.B1I, { x: 44, y: 97, w: 102, h: 149 }, { slot: 'B1' });
+  // B slots
+  pushFurniture(layers, safeHome, 'B', 4, 155, 41 + 24);
+  pushFurniture(layers, safeHome, 'B', 3, 118, 60 + 24);
+  pushFurniture(layers, safeHome, 'B', 2, 81, 79 + 24);
+  pushFurniture(layers, safeHome, 'B', 1, 44, 97 + 24);
 
-  pushIf(layers, !!home?.C_DATA?.C4I, 'furniture', home.C_DATA.C4I, { x: 191, y: 59, w: 102, h: 149 }, { slot: 'C4' });
-  pushIf(layers, !!home?.C_DATA?.C3I, 'furniture', home.C_DATA.C3I, { x: 154, y: 78, w: 102, h: 149 }, { slot: 'C3' });
-  pushIf(layers, !!home?.C_DATA?.C2I, 'furniture', home.C_DATA.C2I, { x: 117, y: 96, w: 102, h: 149 }, { slot: 'C2' });
-  pushIf(layers, !!home?.C_DATA?.C1I, 'furniture', home.C_DATA.C1I, { x: 80, y: 114, w: 102, h: 149 }, { slot: 'C1' });
+  // C slots
+  pushFurniture(layers, safeHome, 'C', 4, 191, 59 + 24);
+  pushFurniture(layers, safeHome, 'C', 3, 154, 78 + 24);
+  pushFurniture(layers, safeHome, 'C', 2, 117, 96 + 24);
+  pushFurniture(layers, safeHome, 'C', 1, 80, 114 + 24);
 
-  pushIf(layers, !!home?.D_DATA?.D4I, 'furniture', home.D_DATA.D4I, { x: 227, y: 77, w: 102, h: 149 }, { slot: 'D4' });
-  pushIf(layers, !!home?.D_DATA?.D3I, 'furniture', home.D_DATA.D3I, { x: 190, y: 95, w: 102, h: 149 }, { slot: 'D3' });
-  pushIf(layers, !!home?.D_DATA?.D2I, 'furniture', home.D_DATA.D2I, { x: 153, y: 113, w: 102, h: 149 }, { slot: 'D2' });
-  pushIf(layers, !!home?.D_DATA?.D1I, 'furniture', home.D_DATA.D1I, { x: 116, y: 131, w: 102, h: 149 }, { slot: 'D1' });
+  // D slots
+  pushFurniture(layers, safeHome, 'D', 4, 227, 77 + 24);
+  pushFurniture(layers, safeHome, 'D', 3, 190, 95 + 24);
+  pushFurniture(layers, safeHome, 'D', 2, 153, 113 + 24);
+  pushFurniture(layers, safeHome, 'D', 1, 116, 131 + 24);
 
+  // window overlay should be on top of furniture
+  const thailandTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Bangkok"}));
+  const hour = thailandTime.getHours();
+  const isNightTime = hour >= 18 || hour < 6;
+  if (isNightTime) {
+    pushIf(layers, true, 'window-overlay', 'windows_night_full', { x: 0, y: 0, w: W, h: H }, { 
+      url: 'https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/windows_night_full.png' 
+    });
+  } else {
+    pushIf(layers, true, 'window-overlay', 'windows', { x: 0, y: 0, w: W, h: H }, { 
+      url: 'https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/windows.png' 
+    });
+  }
+
+  console.log('buildHouseLayers completed. Total layers:', layers.length);
+  console.log('Window overlay layers:', layers.filter(l => l.type === 'window-overlay'));
+  
   return layers;
 }
 

@@ -105,7 +105,7 @@ const PET_CACHE_MAX_ENTRIES = parseInt(process.env.PET_CACHE_MAX_ENTRIES || '500
 // เปิด/ปิดการแนบบ้าน (เรนเดอร์บ้านเป็นงานเบื้องหลัง)
 const PET_INCLUDE_HOUSE = process.env.PET_INCLUDE_HOUSE !== '0';
 // URL พื้นหลังบ้านเริ่มต้น (หากเลเยอร์พื้นหลังไม่ถูกส่งมา)
-const PET_HOUSE_BG_URL = process.env.PET_HOUSE_BG_URL || 'https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/backgrounds/default.png';
+const PET_HOUSE_BG_URL = process.env.PET_HOUSE_BG_URL || 'https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/backgrounds/daycare_room.png';
 // กำหนด key ของ room background (ให้ renderer สร้าง URL เป็น `${ASSET_BASE_URL}/backgrounds/{key}.png`)
 const PET_HOUSE_BG_KEY = (process.env.PET_HOUSE_BG_KEY || '').trim();
 // พื้นหลังแบบไฟล์โลคัล (ถ้ากำหนดจะใช้ไฟล์นี้ก่อนเสมอ)
@@ -834,10 +834,12 @@ async function renderHouseAttachment(home, pet, state, poseKey) {
     pdbg('house.config', { HOUSE_TRANSPARENT_BG, PET_HOUSE_BG_KEY, PET_HOUSE_BG_URL, PET_ASSET_BASE_URL, PET_ASSET_PATH_PREFIX });
             let houseLayers = buildHouseLayers(home);
     pdbg('house.layers.init', { count: Array.isArray(houseLayers) ? houseLayers.length : 0 });
-            if (HOUSE_TRANSPARENT_BG) {
-              houseLayers = houseLayers.filter(l => l.type !== 'background');
-      pdbg('house.layers.transparent', { after: houseLayers.length });
-            }
+            // ไม่กรอง room-bg ออกแม้ HOUSE_TRANSPARENT_BG=1 เพื่อให้เห็น background layer
+            // GIF จะยังโปร่งใสอยู่ แต่ background จะแสดง
+            // if (HOUSE_TRANSPARENT_BG) {
+            //   houseLayers = houseLayers.filter(l => l.type !== 'background');
+            //   pdbg('house.layers.transparent', { after: houseLayers.length });
+            // }
 
             const chosen = pickRandomEmptySlot(home);
     pdbg('house.slot', { chosen });
@@ -896,15 +898,24 @@ async function renderHouseAttachment(home, pet, state, poseKey) {
             async function toStaticLayer(layer) {
               if (!layer) return null;
               if (layer.type === 'room-bg') {
-                if (HOUSE_TRANSPARENT_BG) return null;
+                // แสดง room-bg แม้ HOUSE_TRANSPARENT_BG=1
                 const key = String(layer.key || 'default');
                 return { type: 'room-bg', key, draw: layer.draw };
               }
               if (layer.type === 'floor') {
-                return { type: 'floor', key: layer.key, draw: layer.draw };
+                // ส่งเป็น static พร้อม URL ตรง (ให้ตรงกับ layout.js)
+                return { type: 'static', url: layer.url, draw: layer.draw };
+              }
+              if (layer.type === 'tile') {
+                // ส่งเป็น static พร้อม URL ตรง (ให้ตรงกับ layout.js)
+                return { type: 'static', url: layer.url, draw: layer.draw };
               }
               if (layer.type === 'wallpaper-left' || layer.type === 'wallpaper-right') {
                 return { type: layer.type, key: layer.key, draw: layer.draw };
+              }
+              if (layer.type === 'window-overlay') {
+                // ส่ง window-overlay พร้อม URL
+                return { type: 'static', url: layer.url, draw: layer.draw };
               }
               if (layer.type === 'background') {
                 return null;
@@ -1007,16 +1018,17 @@ async function renderHouseAttachment(home, pet, state, poseKey) {
               const furnBack = sortedFurniture.filter(fl => getSlotRank(fl.slot, fl.draw) <= petRank);
               const furnFront = sortedFurniture.filter(fl => getSlotRank(fl.slot, fl.draw) > petRank);
 
+              // วาง poop ใต้เฟอร์นิเจอร์ทั้งหมด
+              for (const layer of poopLayers) layersHouse.push(layer);
+
+              // วางเฟอร์นิเจอร์ด้านหลัง pet ด้วย URL แบบ static
               for (const fl of furnBack) {
                 try {
-                  const key = String(fl.key || '').trim();
-                  if (!key) continue;
-                  layersHouse.push({ type: 'furniture', key, draw: fl.draw });
+                  const url = String(fl.url || '').trim();
+                  if (!url) continue;
+                  layersHouse.push({ type: 'static', url, draw: fl.draw });
                 } catch (_) { /* skip furniture */ }
               }
-
-              // วาง poop ใต้ pet/emote เพื่อให้สัตว์เลี้ยงและอีโมจิทับอยู่ด้านบน
-              for (const layer of poopLayers) layersHouse.push(layer);
               for (const layer of petLayers) layersHouse.push(layer);
               for (const layer of emoteLayers) layersHouse.push(layer);
 
@@ -1035,12 +1047,22 @@ async function renderHouseAttachment(home, pet, state, poseKey) {
                 }
               } catch (_) { /* ignore name tag errors */ }
 
+              // วางเฟอร์นิเจอร์ด้านหน้า pet ด้วย URL แบบ static
               for (const fl of furnFront) {
                 try {
-                  const key = String(fl.key || '').trim();
-                  if (!key) continue;
-                  layersHouse.push({ type: 'furniture', key, draw: fl.draw });
+                  const url = String(fl.url || '').trim();
+                  if (!url) continue;
+                  layersHouse.push({ type: 'static', url, draw: fl.draw });
                 } catch (_) { /* skip furniture */ }
+              }
+              
+              // วาง window-overlay หน้าสุดเสมอ (ทับทุกอย่าง)
+              for (const layer of baseLayers) {
+                try {
+                  if (layer.type !== 'window-overlay') continue; // เฉพาะ window-overlay
+                  const staticLayer = await toStaticLayer(layer);
+                  if (staticLayer) layersHouse.push(staticLayer);
+                } catch (_) { /* skip window layer */ }
               }
     } else {
       pdbg('house.slot.fallback', { using: 'PET_INHOUSE_DRAW' });
@@ -1072,18 +1094,37 @@ async function renderHouseAttachment(home, pet, state, poseKey) {
         }));
         emoteLayers.push({ type: 'pet_gif_frames', frames: framesEmote });
       }
-      // วางเฟอร์นิเจอร์ทั้งหมดก่อน แล้วค่อยวาง pet บนสุดเพื่อให้ไม่ถูกบัง
+      // วาง base layers ก่อน (ยกเว้น window-overlay)
+      for (const layer of baseLayers) {
+        try {
+          if (layer.type === 'window-overlay') continue; // ข้าม window-overlay ไว้ทีหลัง
+          const staticLayer = await toStaticLayer(layer);
+          if (staticLayer) layersHouse.push(staticLayer);
+        } catch (_) { /* skip base layer */ }
+      }
+      
+      // วาง poop ใต้เฟอร์นิเจอร์ทั้งหมด
+      for (const layer of poopLayers) layersHouse.push(layer);
+
+      // วางเฟอร์นิเจอร์ทั้งหมดเป็น static URL
       for (const fl of sortedFurniture) {
         try {
-          const key = String(fl.key || '').trim();
-          if (!key) continue;
-          layersHouse.push({ type: 'furniture', key, draw: fl.draw });
+          const url = String(fl.url || '').trim();
+          if (!url) continue;
+          layersHouse.push({ type: 'static', url, draw: fl.draw });
         } catch (_) { /* skip furniture */ }
       }
-      // วาง poop ก่อน เพื่อให้ pet/emote อยู่หน้าสุดเหนือ poop
-      for (const layer of poopLayers) layersHouse.push(layer);
       for (const layer of petLayers) layersHouse.push(layer);
       for (const layer of emoteLayers) layersHouse.push(layer);
+      
+      // วาง window-overlay หน้าสุดเสมอ (ทับทุกอย่าง)
+      for (const layer of baseLayers) {
+        try {
+          if (layer.type !== 'window-overlay') continue; // เฉพาะ window-overlay
+          const staticLayer = await toStaticLayer(layer);
+          if (staticLayer) layersHouse.push(staticLayer);
+        } catch (_) { /* skip window layer */ }
+      }
     }
 
     pdbg('house.layers.final', { count: layersHouse.length });
@@ -1093,7 +1134,14 @@ async function renderHouseAttachment(home, pet, state, poseKey) {
       user: 'u',
               size: { width: 300, height: 300 },
               format: 'gif',
-              gifOptions: { delayMs: PET_GIF_DELAY_MS, repeat: 0, quality: PET_HOUSE_GIF_QUALITY, transparent: true, backgroundColorHex: '#1a1a1e' },
+              gifOptions: { 
+                delayMs: PET_GIF_DELAY_MS, 
+                repeat: 0, 
+                quality: PET_HOUSE_GIF_QUALITY, 
+                transparent: HOUSE_TRANSPARENT_BG, 
+                transparentColorHex: '#ff00ff',
+                backgroundColorHex: HOUSE_TRANSPARENT_BG ? '' : '#1a1a1e'
+              },
               layers: layersHouse,
             };
     pdbg('house.enqueue', { layers: layersHouse.length, format: payloadHouse.format });

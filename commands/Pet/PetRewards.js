@@ -108,8 +108,7 @@ module.exports = {
             const pet = await GPet.findOne({ guild: guild.id, user: user.id });
             if (!pet) {
                 return interaction.reply({
-                    content: "❌ คุณยังไม่มีสัตว์เลี้ยง! ใช้คำสั่ง `/รับสัตว์เลี้ยง` เพื่อรับสัตว์เลี้ยงตัวแรก",
-                    ephemeral: true
+                    content: "❌ คุณยังไม่มีสัตว์เลี้ยง! ใช้คำสั่ง `/รับสัตว์เลี้ยง` เพื่อรับสัตว์เลี้ยงตัวแรก"
                 });
             }
             
@@ -123,7 +122,6 @@ module.exports = {
             const message = await interaction.reply({
                 embeds: [embed],
                 components: [buttons],
-                ephemeral: true,
                 fetchReply: true
             });
             
@@ -291,8 +289,7 @@ module.exports = {
             console.error("Error in petrewards command:", error);
             if (!interaction.replied && !interaction.deferred) {
                 await interaction.reply({
-                    content: "❌ เกิดข้อผิดพลาดในการดำเนินการ",
-                    ephemeral: true
+                    content: "❌ เกิดข้อผิดพลาดในการดำเนินการ"
                 });
             }
         }

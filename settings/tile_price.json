@@ -1,0 +1,982 @@
+﻿[
+  {
+    "image": "./products/Abstract Blue Squares.png",
+    "name": "Abstract Blue Squares",
+    "price": 15000
+  },
+  {
+    "image": "./products/Abstract Light Squares.png",
+    "name": "Abstract Light Squares",
+    "price": 12500
+  },
+  {
+    "image": "./products/Abstract Red Squares.png",
+    "name": "Abstract Red Squares",
+    "price": 10500
+  },
+  {
+    "image": "./products/Achromatic Stripes.png",
+    "name": "Achromatic Stripes",
+    "price": 7000
+  },
+  {
+    "image": "./products/Airplane Cabin.png",
+    "name": "Airplane Cabin",
+    "price": 10500
+  },
+  {
+    "image": "./products/All Hallows Night.png",
+    "name": "All Hallows Night",
+    "price": 8500
+  },
+  {
+    "image": "./products/Alternating Blue Squares.png",
+    "name": "Alternating Blue Squares",
+    "price": 11500
+  },
+  {
+    "image": "./products/Alternating Green Diamonds.png",
+    "name": "Alternating Green Diamonds",
+    "price": 15500
+  },
+  {
+    "image": "./products/Alternating Grey Diamonds.png",
+    "name": "Alternating Grey Diamonds",
+    "price": 12000
+  },
+  {
+    "image": "./products/Alternating Lime Squares.png",
+    "name": "Alternating Lime Squares",
+    "price": 10000
+  },
+  {
+    "image": "./products/Alternating Orange Squares.png",
+    "name": "Alternating Orange Squares",
+    "price": 11000
+  },
+  {
+    "image": "./products/Anime Scenery.png",
+    "name": "Anime Scenery",
+    "price": 13000
+  },
+  {
+    "image": "./products/Art Room with Paint Stains.png",
+    "name": "Art Room with Paint Stains",
+    "price": 9000
+  },
+  {
+    "image": "./products/Art Room.png",
+    "name": "Art Room",
+    "price": 12000
+  },
+  {
+    "image": "./products/Bamboo and Weaved Rattan.png",
+    "name": "Bamboo and Weaved Rattan",
+    "price": 7000
+  },
+  {
+    "image": "./products/Barn.png",
+    "name": "Barn",
+    "price": 9000
+  },
+  {
+    "image": "./products/Beige Diamond Pattern.png",
+    "name": "Beige Diamond Pattern",
+    "price": 8000
+  },
+  {
+    "image": "./products/Beige Stucco.png",
+    "name": "Beige Stucco",
+    "price": 12500
+  },
+  {
+    "image": "./products/Big Top Tent.png",
+    "name": "Big Top Tent",
+    "price": 14500
+  },
+  {
+    "image": "./products/Black Abandoned House.png",
+    "name": "Black Abandoned House",
+    "price": 11000
+  },
+  {
+    "image": "./products/Black Masonary.png",
+    "name": "Black Masonary",
+    "price": 11500
+  },
+  {
+    "image": "./products/Black Money.png",
+    "name": "Black Money",
+    "price": 15500
+  },
+  {
+    "image": "./products/Black Velvet.png",
+    "name": "Black Velvet",
+    "price": 9500
+  },
+  {
+    "image": "./products/Blue Cyberpunk.png",
+    "name": "Blue Cyberpunk",
+    "price": 12500
+  },
+  {
+    "image": "./products/Blue Kids Room.png",
+    "name": "Blue Kids Room",
+    "price": 17500
+  },
+  {
+    "image": "./products/Blue Lines.png",
+    "name": "Blue Lines",
+    "price": 15500
+  },
+  {
+    "image": "./products/Blue Stars.png",
+    "name": "Blue Stars",
+    "price": 17000
+  },
+  {
+    "image": "./products/Blue Stone.png",
+    "name": "Blue Stone",
+    "price": 17000
+  },
+  {
+    "image": "./products/Blue.png",
+    "name": "Blue",
+    "price": 14500
+  },
+  {
+    "image": "./products/Brick.png",
+    "name": "Brick",
+    "price": 9500
+  },
+  {
+    "image": "./products/Bubblegum Polka Dot.png",
+    "name": "Bubblegum Polka Dot",
+    "price": 10500
+  },
+  {
+    "image": "./products/Cabinets.png",
+    "name": "Cabinets",
+    "price": 17000
+  },
+  {
+    "image": "./products/Cafe Geometric Deco.png",
+    "name": "Cafe Geometric Deco",
+    "price": 10000
+  },
+  {
+    "image": "./products/Cafe Menu.png",
+    "name": "Cafe Menu",
+    "price": 12500
+  },
+  {
+    "image": "./products/Cafe Stucco.png",
+    "name": "Cafe Stucco",
+    "price": 11500
+  },
+  {
+    "image": "./products/Cafe.png",
+    "name": "Cafe",
+    "price": 12500
+  },
+  {
+    "image": "./products/Carnival Sky.png",
+    "name": "Carnival Sky",
+    "price": 17000
+  },
+  {
+    "image": "./products/Castle Brick.png",
+    "name": "Castle Brick",
+    "price": 11000
+  },
+  {
+    "image": "./products/Clear Blue Sky.png",
+    "name": "Clear Blue Sky",
+    "price": 10000
+  },
+  {
+    "image": "./products/Cloudy Sky Fence.png",
+    "name": "Cloudy Sky Fence",
+    "price": 13500
+  },
+  {
+    "image": "./products/Cloudy Sky Half Brick.png",
+    "name": "Cloudy Sky Half Brick",
+    "price": 11000
+  },
+  {
+    "image": "./products/Concert Hall Curtain.png",
+    "name": "Concert Hall Curtain",
+    "price": 13000
+  },
+  {
+    "image": "./products/Constellation.png",
+    "name": "Constellation",
+    "price": 9500
+  },
+  {
+    "image": "./products/Creepy Carnival.png",
+    "name": "Creepy Carnival",
+    "price": 17000
+  },
+  {
+    "image": "./products/Cyan Victorian.png",
+    "name": "Cyan Victorian",
+    "price": 11000
+  },
+  {
+    "image": "./products/Cyberpunk.png",
+    "name": "Cyberpunk",
+    "price": 14500
+  },
+  {
+    "image": "./products/Dark Brick.png",
+    "name": "Dark Brick",
+    "price": 17500
+  },
+  {
+    "image": "./products/Dark Purple Lines.png",
+    "name": "Dark Purple Lines",
+    "price": 10000
+  },
+  {
+    "image": "./products/Dark Spaceship Interior.png",
+    "name": "Dark Spaceship Interior",
+    "price": 9000
+  },
+  {
+    "image": "./products/Dark Spaceship Window.png",
+    "name": "Dark Spaceship Window",
+    "price": 14000
+  },
+  {
+    "image": "./products/Dark Wood Panels.png",
+    "name": "Dark Wood Panels",
+    "price": 12500
+  },
+  {
+    "image": "./products/Deep Space.png",
+    "name": "Deep Space",
+    "price": 10000
+  },
+  {
+    "image": "./products/Degraded Blue.png",
+    "name": "Degraded Blue",
+    "price": 14500
+  },
+  {
+    "image": "./products/Degraded Green.png",
+    "name": "Degraded Green",
+    "price": 14500
+  },
+  {
+    "image": "./products/Degraded Pink.png",
+    "name": "Degraded Pink",
+    "price": 11500
+  },
+  {
+    "image": "./products/Desert Vista.png",
+    "name": "Desert Vista",
+    "price": 17500
+  },
+  {
+    "image": "./products/Discord Black.png",
+    "name": "Discord Black",
+    "price": 9000
+  },
+  {
+    "image": "./products/Dotted Green.png",
+    "name": "Dotted Green",
+    "price": 16000
+  },
+  {
+    "image": "./products/Dotted Pink.png",
+    "name": "Dotted Pink",
+    "price": 7500
+  },
+  {
+    "image": "./products/Dotted White.png",
+    "name": "Dotted White",
+    "price": 12500
+  },
+  {
+    "image": "./products/Dreamy Sky.png",
+    "name": "Dreamy Sky",
+    "price": 9500
+  },
+  {
+    "image": "./products/Enchanted Woodland.png",
+    "name": "Enchanted Woodland",
+    "price": 12000
+  },
+  {
+    "image": "./products/Festive Sparkle.png",
+    "name": "Festive Sparkle",
+    "price": 7000
+  },
+  {
+    "image": "./products/Floral Green Striped.png",
+    "name": "Floral Green Striped",
+    "price": 8500
+  },
+  {
+    "image": "./products/FlowerLined Brick.png",
+    "name": "FlowerLined Brick",
+    "price": 17500
+  },
+  {
+    "image": "./products/Forest Night.png",
+    "name": "Forest Night",
+    "price": 11500
+  },
+  {
+    "image": "./products/Full Garden Fence.png",
+    "name": "Full Garden Fence",
+    "price": 9000
+  },
+  {
+    "image": "./products/Full Kitchen.png",
+    "name": "Full Kitchen",
+    "price": 14000
+  },
+  {
+    "image": "./products/Funky Triangle.png",
+    "name": "Funky Triangle",
+    "price": 7000
+  },
+  {
+    "image": "./products/Garden Fencing.png",
+    "name": "Garden Fencing",
+    "price": 12500
+  },
+  {
+    "image": "./products/Garden Hedge copy a.png",
+    "name": "Garden Hedge copy a",
+    "price": 9500
+  },
+  {
+    "image": "./products/Garden Hedge.png",
+    "name": "Garden Hedge",
+    "price": 15000
+  },
+  {
+    "image": "./products/Garden Mural.png",
+    "name": "Garden Mural",
+    "price": 9000
+  },
+  {
+    "image": "./products/Glass Tile.png",
+    "name": "Glass Tile",
+    "price": 7000
+  },
+  {
+    "image": "./products/Gloomy Sky.png",
+    "name": "Gloomy Sky",
+    "price": 6500
+  },
+  {
+    "image": "./products/GraffitiCovered Art Room.png",
+    "name": "GraffitiCovered Art Room",
+    "price": 16500
+  },
+  {
+    "image": "./products/Green Fractualed.png",
+    "name": "Green Fractualed",
+    "price": 12000
+  },
+  {
+    "image": "./products/Green Lines.png",
+    "name": "Green Lines",
+    "price": 10000
+  },
+  {
+    "image": "./products/Green Money.png",
+    "name": "Green Money",
+    "price": 8000
+  },
+  {
+    "image": "./products/Green Stone.png",
+    "name": "Green Stone",
+    "price": 9000
+  },
+  {
+    "image": "./products/Greenhouse Too.png",
+    "name": "Greenhouse Too",
+    "price": 16000
+  },
+  {
+    "image": "./products/Greenhouse.png",
+    "name": "Greenhouse",
+    "price": 13000
+  },
+  {
+    "image": "./products/Grey Blue Metal.png",
+    "name": "Grey Blue Metal",
+    "price": 14500
+  },
+  {
+    "image": "./products/Grey Brick.png",
+    "name": "Grey Brick",
+    "price": 7000
+  },
+  {
+    "image": "./products/Grey Fractual.png",
+    "name": "Grey Fractual",
+    "price": 14500
+  },
+  {
+    "image": "./products/Half Fence Garden.png",
+    "name": "Half Fence Garden",
+    "price": 7000
+  },
+  {
+    "image": "./products/Half Kitchen.png",
+    "name": "Half Kitchen",
+    "price": 8500
+  },
+  {
+    "image": "./products/Halfling Hideaway Too.png",
+    "name": "Halfling Hideaway Too",
+    "price": 13500
+  },
+  {
+    "image": "./products/Halfling Hideaway.png",
+    "name": "Halfling Hideaway",
+    "price": 7500
+  },
+  {
+    "image": "./products/Japanese Landscape Mural.png",
+    "name": "Japanese Landscape Mural",
+    "price": 12000
+  },
+  {
+    "image": "./products/Jungle Green.png",
+    "name": "Jungle Green",
+    "price": 9500
+  },
+  {
+    "image": "./products/Jungle Light Green.png",
+    "name": "Jungle Light Green",
+    "price": 7500
+  },
+  {
+    "image": "./products/Jungle Pink.png",
+    "name": "Jungle Pink",
+    "price": 9500
+  },
+  {
+    "image": "./products/Kawaii.png",
+    "name": "Kawaii",
+    "price": 15000
+  },
+  {
+    "image": "./products/Laboratory Blackboard.png",
+    "name": "Laboratory Blackboard",
+    "price": 10500
+  },
+  {
+    "image": "./products/Large Abstract Dark Stones.png",
+    "name": "Large Abstract Dark Stones",
+    "price": 16500
+  },
+  {
+    "image": "./products/Large Abstract Light Stones.png",
+    "name": "Large Abstract Light Stones",
+    "price": 12500
+  },
+  {
+    "image": "./products/Large Abstract Stones.png",
+    "name": "Large Abstract Stones",
+    "price": 7000
+  },
+  {
+    "image": "./products/Light Brick.png",
+    "name": "Light Brick",
+    "price": 17500
+  },
+  {
+    "image": "./products/Light Metal.png",
+    "name": "Light Metal",
+    "price": 17000
+  },
+  {
+    "image": "./products/Light Wood Panels.png",
+    "name": "Light Wood Panels",
+    "price": 11500
+  },
+  {
+    "image": "./products/London Cityscape.png",
+    "name": "London Cityscape",
+    "price": 9500
+  },
+  {
+    "image": "./products/Misty Willow.png",
+    "name": "Misty Willow",
+    "price": 9500
+  },
+  {
+    "image": "./products/Modern Fall Garden.png",
+    "name": "Modern Fall Garden",
+    "price": 14000
+  },
+  {
+    "image": "./products/Modern Garden.png",
+    "name": "Modern Garden",
+    "price": 10500
+  },
+  {
+    "image": "./products/Monochrome Tile.png",
+    "name": "Monochrome Tile",
+    "price": 15500
+  },
+  {
+    "image": "./products/Moon Vista.png",
+    "name": "Moon Vista",
+    "price": 7000
+  },
+  {
+    "image": "./products/Moonlit Forest.png",
+    "name": "Moonlit Forest",
+    "price": 13500
+  },
+  {
+    "image": "./products/Moonlit Winter Sky.png",
+    "name": "Moonlit Winter Sky",
+    "price": 14500
+  },
+  {
+    "image": "./products/Mossy Bark.png",
+    "name": "Mossy Bark",
+    "price": 13000
+  },
+  {
+    "image": "./products/Multicolor Spotlight.png",
+    "name": "Multicolor Spotlight",
+    "price": 11500
+  },
+  {
+    "image": "./products/Mysterious Windows.png",
+    "name": "Mysterious Windows",
+    "price": 17000
+  },
+  {
+    "image": "./products/Orange Lines.png",
+    "name": "Orange Lines",
+    "price": 14000
+  },
+  {
+    "image": "./products/Orange Stone.png",
+    "name": "Orange Stone",
+    "price": 16000
+  },
+  {
+    "image": "./products/Pale Masonary.png",
+    "name": "Pale Masonary",
+    "price": 14500
+  },
+  {
+    "image": "./products/Panelled Wood.png",
+    "name": "Panelled Wood",
+    "price": 14500
+  },
+  {
+    "image": "./products/Paris Cityscape.png",
+    "name": "Paris Cityscape",
+    "price": 15500
+  },
+  {
+    "image": "./products/Pastel Cat Head.png",
+    "name": "Pastel Cat Head",
+    "price": 17500
+  },
+  {
+    "image": "./products/Pastel Pawprint.png",
+    "name": "Pastel Pawprint",
+    "price": 12000
+  },
+  {
+    "image": "./products/Pastel Pink HeartPatterned.png",
+    "name": "Pastel Pink HeartPatterned",
+    "price": 17000
+  },
+  {
+    "image": "./products/Periodic Table Poster.png",
+    "name": "Periodic Table Poster",
+    "price": 9500
+  },
+  {
+    "image": "./products/Pine Foliage.png",
+    "name": "Pine Foliage",
+    "price": 13500
+  },
+  {
+    "image": "./products/Pine Woods.png",
+    "name": "Pine Woods",
+    "price": 13000
+  },
+  {
+    "image": "./products/Pink Lines.png",
+    "name": "Pink Lines",
+    "price": 13000
+  },
+  {
+    "image": "./products/Pink Stars.png",
+    "name": "Pink Stars",
+    "price": 9500
+  },
+  {
+    "image": "./products/Pirate Ship Too.png",
+    "name": "Pirate Ship Too",
+    "price": 8000
+  },
+  {
+    "image": "./products/Pirate Ship with Chains.png",
+    "name": "Pirate Ship with Chains",
+    "price": 11500
+  },
+  {
+    "image": "./products/Pirate Ship.png",
+    "name": "Pirate Ship",
+    "price": 12000
+  },
+  {
+    "image": "./products/Planet Vista.png",
+    "name": "Planet Vista",
+    "price": 14500
+  },
+  {
+    "image": "./products/Pool Tile.png",
+    "name": "Pool Tile",
+    "price": 7500
+  },
+  {
+    "image": "./products/Purple Fractualed.png",
+    "name": "Purple Fractualed",
+    "price": 10500
+  },
+  {
+    "image": "./products/Purple Lines.png",
+    "name": "Purple Lines",
+    "price": 11500
+  },
+  {
+    "image": "./products/Purple Stone.png",
+    "name": "Purple Stone",
+    "price": 10000
+  },
+  {
+    "image": "./products/Rainbow Stripes.png",
+    "name": "Rainbow Stripes",
+    "price": 8500
+  },
+  {
+    "image": "./products/Rainy Cityscape.png",
+    "name": "Rainy Cityscape",
+    "price": 15500
+  },
+  {
+    "image": "./products/Rattan Hut.png",
+    "name": "Rattan Hut",
+    "price": 12500
+  },
+  {
+    "image": "./products/Red Diagonal Lines.png",
+    "name": "Red Diagonal Lines",
+    "price": 9500
+  },
+  {
+    "image": "./products/Red Heart.png",
+    "name": "Red Heart",
+    "price": 6500
+  },
+  {
+    "image": "./products/Red Lines.png",
+    "name": "Red Lines",
+    "price": 14500
+  },
+  {
+    "image": "./products/Retro Diner.png",
+    "name": "Retro Diner",
+    "price": 16500
+  },
+  {
+    "image": "./products/Riveted Concrete.png",
+    "name": "Riveted Concrete",
+    "price": 17500
+  },
+  {
+    "image": "./products/Romantic Tile.png",
+    "name": "Romantic Tile",
+    "price": 12500
+  },
+  {
+    "image": "./products/Saloon.png",
+    "name": "Saloon",
+    "price": 16500
+  },
+  {
+    "image": "./products/Sea Cave.png",
+    "name": "Sea Cave",
+    "price": 12000
+  },
+  {
+    "image": "./products/Secluded Clearing.png",
+    "name": "Secluded Clearing",
+    "price": 6500
+  },
+  {
+    "image": "./products/Shoji.png",
+    "name": "Shoji",
+    "price": 10500
+  },
+  {
+    "image": "./products/Simple Pastel Pink.png",
+    "name": "Simple Pastel Pink",
+    "price": 11500
+  },
+  {
+    "image": "./products/Small Abstract Stones.png",
+    "name": "Small Abstract Stones",
+    "price": 11500
+  },
+  {
+    "image": "./products/Small Abstract White Stones.png",
+    "name": "Small Abstract White Stones",
+    "price": 6500
+  },
+  {
+    "image": "./products/Snowy Foliage.png",
+    "name": "Snowy Foliage",
+    "price": 14000
+  },
+  {
+    "image": "./products/Solid Green Striped.png",
+    "name": "Solid Green Striped",
+    "price": 7000
+  },
+  {
+    "image": "./products/Soundproofing Panels.png",
+    "name": "Soundproofing Panels",
+    "price": 12500
+  },
+  {
+    "image": "./products/Space.png",
+    "name": "Space",
+    "price": 12500
+  },
+  {
+    "image": "./products/Spaceship Interior.png",
+    "name": "Spaceship Interior",
+    "price": 7000
+  },
+  {
+    "image": "./products/Spaceship Window.png",
+    "name": "Spaceship Window",
+    "price": 14000
+  },
+  {
+    "image": "./products/Sprinkle Cone.png",
+    "name": "Sprinkle Cone",
+    "price": 16000
+  },
+  {
+    "image": "./products/Stone Farmhouse.png",
+    "name": "Stone Farmhouse",
+    "price": 14500
+  },
+  {
+    "image": "./products/Stormy Sky.png",
+    "name": "Stormy Sky",
+    "price": 14500
+  },
+  {
+    "image": "./products/Striped Pink, Blue and White.png",
+    "name": "Striped Pink, Blue and White",
+    "price": 11000
+  },
+  {
+    "image": "./products/Submerged.png",
+    "name": "Submerged",
+    "price": 8500
+  },
+  {
+    "image": "./products/Summer Sunset.png",
+    "name": "Summer Sunset",
+    "price": 10500
+  },
+  {
+    "image": "./products/Sunset Cityscape.png",
+    "name": "Sunset Cityscape",
+    "price": 13000
+  },
+  {
+    "image": "./products/Sunset Fence.png",
+    "name": "Sunset Fence",
+    "price": 17000
+  },
+  {
+    "image": "./products/Tavern Brick.png",
+    "name": "Tavern Brick",
+    "price": 13000
+  },
+  {
+    "image": "./products/Tavern.png",
+    "name": "Tavern",
+    "price": 9000
+  },
+  {
+    "image": "./products/Teal Modern Garden.png",
+    "name": "Teal Modern Garden",
+    "price": 6500
+  },
+  {
+    "image": "./products/Teal Park Garden.png",
+    "name": "Teal Park Garden",
+    "price": 13000
+  },
+  {
+    "image": "./products/Torn Purple Velvet.png",
+    "name": "Torn Purple Velvet",
+    "price": 12000
+  },
+  {
+    "image": "./products/Turquoise Diagonal Lines.png",
+    "name": "Turquoise Diagonal Lines",
+    "price": 7000
+  },
+  {
+    "image": "./products/Turquoise Lines.png",
+    "name": "Turquoise Lines",
+    "price": 8500
+  },
+  {
+    "image": "./products/Underwater Ruin.png",
+    "name": "Underwater Ruin",
+    "price": 11000
+  },
+  {
+    "image": "./products/Vaporwave Too.png",
+    "name": "Vaporwave Too",
+    "price": 15500
+  },
+  {
+    "image": "./products/Vaporwave.png",
+    "name": "Vaporwave",
+    "price": 9500
+  },
+  {
+    "image": "./products/Vertical Garden NE.png",
+    "name": "Vertical Garden NE",
+    "price": 13000
+  },
+  {
+    "image": "./products/Vertical Garden NW.png",
+    "name": "Vertical Garden NW",
+    "price": 17000
+  },
+  {
+    "image": "./products/Vertical Garden.png",
+    "name": "Vertical Garden",
+    "price": 14500
+  },
+  {
+    "image": "./products/Vertical Wooden Slats.png",
+    "name": "Vertical Wooden Slats",
+    "price": 14500
+  },
+  {
+    "image": "./products/Victorian A.png",
+    "name": "Victorian A",
+    "price": 7000
+  },
+  {
+    "image": "./products/Victorian B.png",
+    "name": "Victorian B",
+    "price": 12500
+  },
+  {
+    "image": "./products/Wet Room.png",
+    "name": "Wet Room",
+    "price": 16500
+  },
+  {
+    "image": "./products/White Acoustic Panel.png",
+    "name": "White Acoustic Panel",
+    "price": 14500
+  },
+  {
+    "image": "./products/White Brick Garden.png",
+    "name": "White Brick Garden",
+    "price": 17500
+  },
+  {
+    "image": "./products/White Money.png",
+    "name": "White Money",
+    "price": 12000
+  },
+  {
+    "image": "./products/White Plaster.png",
+    "name": "White Plaster",
+    "price": 7000
+  },
+  {
+    "image": "./products/White Stucco.png",
+    "name": "White Stucco",
+    "price": 6500
+  },
+  {
+    "image": "./products/Winter Sky Fence.png",
+    "name": "Winter Sky Fence",
+    "price": 15500
+  },
+  {
+    "image": "./products/Winter Sky Half Brick.png",
+    "name": "Winter Sky Half Brick",
+    "price": 16500
+  },
+  {
+    "image": "./products/Winter Sky.png",
+    "name": "Winter Sky",
+    "price": 9000
+  },
+  {
+    "image": "./products/Wizardous Wonder.png",
+    "name": "Wizardous Wonder",
+    "price": 12500
+  },
+  {
+    "image": "./products/Wonderous Forest.png",
+    "name": "Wonderous Forest",
+    "price": 17000
+  },
+  {
+    "image": "./products/Wood Panels.png",
+    "name": "Wood Panels",
+    "price": 15500
+  },
+  {
+    "image": "./products/Wood and Tile.png",
+    "name": "Wood and Tile",
+    "price": 13000
+  },
+  {
+    "image": "./products/Woven Grass.png",
+    "name": "Woven Grass",
+    "price": 13000
+  },
+  {
+    "image": "./products/Yellow.png",
+    "name": "Yellow",
+    "price": 12000
+  },
+  {
+    "image": "./products/YellowandTeal Stucco.png",
+    "name": "YellowandTeal Stucco",
+    "price": 12500
+  },
+  {
+    "image": "./products/of Shop Windows.png",
+    "name": "of Shop Windows",
+    "price": 11000
+  }
+]

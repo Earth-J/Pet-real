@@ -3,6 +3,10 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMen
 // Dependencies
 const GProfile = require("../../settings/models/profile.js");
 const GInv = require("../../settings/models/inventory.js");
+const { food, cleaning } = require("../../settings/default.js");
+const { shopFurniture } = require("../../structures/shop/furniture.js");
+const { shopFloor } = require("../../structures/shop/floor.js");
+const { shopTile } = require("../../structures/shop/tile.js");
 
 // Cooldown system
 const shopCooldowns = new Map();
@@ -118,7 +122,8 @@ module.exports = {
 
 		// เปิดเมนูเลือกประเภทร้าน
 		await openShopMenu(client, interaction, msg);
-	}
+	},
+	openShopMenu
 }
 
 
@@ -151,7 +156,28 @@ async function openShopMenu(client, interaction, msg) {
                     label: '🗑️ ถุงขยะ',
                     description: 'ซื้อถุงขยะสำหรับเก็บขี้',
                     value: 'cleaning'
-                }
+                },
+                {
+                    label: '🛋️ เฟอร์นิเจอร์ 1x1',
+                    description: 'ซื้อเฟอร์นิเจอร์ขนาด 1x1 (พื้นที่ 1)',
+                    value: 'furniture_area_1'
+                },
+                {
+                    label: '🛋️ เฟอร์นิเจอร์ 2x2',
+                    description: 'ซื้อเฟอร์นิเจอร์ขนาด 2x2 (พื้นที่ 2)',
+                    value: 'furniture_area_2'
+                },
+				{
+					label: '🧱 กระเบื้อง',
+					description: 'ซื้อกระเบื้องตกแต่งบ้าน',
+					value: 'floor'
+				},
+				{
+					label: '🏠 วอลเปเปอร์',
+					description: 'ซื้อวอลเปเปอร์ตกแต่งบ้าน',
+					value: 'tile'
+				}	
+			
             );
 
 		const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -196,10 +222,18 @@ async function openShopMenu(client, interaction, msg) {
 					throw fetchError;
 				}
 				
-				if (selectedCategory === 'food') {
+                if (selectedCategory === 'food') {
 					await openFoodShop(client, interaction, actualMsg);
 				} else if (selectedCategory === 'cleaning') {
 					await openCleaningShop(client, interaction, actualMsg);
+                } else if (selectedCategory === 'furniture_area_1') {
+                    await shopFurniture(client, interaction, actualMsg, { area: 1 });
+                } else if (selectedCategory === 'furniture_area_2') {
+                    await shopFurniture(client, interaction, actualMsg, { area: 2 });
+                } else if (selectedCategory === 'floor') {
+                    await shopFloor(client, interaction, actualMsg);
+                } else if (selectedCategory === 'tile') {
+                    await shopTile(client, interaction, actualMsg);
 				}
 				collector.stop();
 			} catch (error) {
@@ -287,8 +321,9 @@ async function openCleaningShop(client, interaction, msg) {
 		async function renderCleaningPage() {
             const rowMenu = new ActionRowBuilder().addComponents(buildCleaningMenuSlice());
             const rowPage = buildPaginationRow(page, totalPages, 'cleaning_shop');
+            const rowAction = buildActionRow('cleaning_shop');
             try {
-                await msg.edit({ content: " ", embeds: [embed], components: [rowMenu, rowPage] });
+                await msg.edit({ content: " ", embeds: [embed], components: [rowMenu, rowPage, rowAction] });
 			} catch (error) {
 				if (error.code === 10008) {
 					console.error("Message no longer exists in renderCleaningPage, stopping collector");
@@ -310,6 +345,16 @@ async function openCleaningShop(client, interaction, msg) {
 					if (menu.customId.endsWith('_prev')) page = Math.max(0, page - 1);
 					if (menu.customId.endsWith('_next')) page = Math.min(totalPages - 1, page + 1);
 					if (menu.customId.endsWith('_last')) page = totalPages - 1;
+					if (menu.customId.endsWith('_back')) {
+						collector.stop();
+						try { nonOwnerCollector.stop(); } catch {}
+						return await openShopMenu(client, interaction, msg);
+					}
+					if (menu.customId.endsWith('_cancel')) {
+						collector.stop();
+						try { nonOwnerCollector.stop(); } catch {}
+						return await msg.edit({ embeds: [new EmbedBuilder().setColor(client.color).setDescription('ยกเลิกการซื้อแล้ว')], components: [], files: [] });
+					}
 					await renderCleaningPage();
 					return;
 				}
@@ -368,8 +413,9 @@ async function openCleaningShop(client, interaction, msg) {
 				shopCooldowns.set(interaction.user.id, Date.now());
 				
 				const done = new EmbedBuilder()
-					.setColor(client.color)
-					.setDescription(`ซื้อ ${item.emoji} ${item.name} สำเร็จ!\n\n📦 ได้รับถุงขยะ ${item.quantity} ชิ้น (ความจุ ${item.capacity} ก้อนต่อชิ้น)\n💡 ใช้ \`/เก็บขี้\` เพื่อใช้ถุงขยะทำความสะอาดขี้ของสัตว์เลี้ยง`);
+					.setColor('#80DB79')
+					.setTitle('ซื้อสำเร็จ :')
+					.setDescription(`\` - \` 1x ${item.name}`);
 				try {
 					await msg.edit({ embeds: [done], components: [], files: [] });
 				} catch (error) {
@@ -456,8 +502,9 @@ async function openFoodShop(client, interaction, msg) {
 		async function renderFoodPage() {
             const rowMenu = new ActionRowBuilder().addComponents(buildFoodMenuSlice());
             const rowPage = buildPaginationRow(page, totalPages, 'food_shop');
+            const rowAction = buildActionRow('food_shop');
             try {
-                await msg.edit({ content: " ", embeds: [embed], components: [rowMenu, rowPage] });
+                await msg.edit({ content: " ", embeds: [embed], components: [rowMenu, rowPage, rowAction] });
 			} catch (error) {
 				if (error.code === 10008) {
 					console.error("Message no longer exists in renderFoodPage, stopping collector");
@@ -479,6 +526,16 @@ async function openFoodShop(client, interaction, msg) {
 					if (menu.customId.endsWith('_prev')) page = Math.max(0, page - 1);
 					if (menu.customId.endsWith('_next')) page = Math.min(totalPages - 1, page + 1);
 					if (menu.customId.endsWith('_last')) page = totalPages - 1;
+					if (menu.customId.endsWith('_back')) {
+						collector.stop();
+						try { nonOwnerCollector.stop(); } catch {}
+						return await openShopMenu(client, interaction, msg);
+					}
+					if (menu.customId.endsWith('_cancel')) {
+						collector.stop();
+						try { nonOwnerCollector.stop(); } catch {}
+						return await msg.edit({ embeds: [new EmbedBuilder().setColor(client.color).setDescription('ยกเลิกการซื้อแล้ว')], components: [], files: [] });
+					}
 					await renderFoodPage();
 					return;
 				}
@@ -537,8 +594,9 @@ async function openFoodShop(client, interaction, msg) {
 				shopCooldowns.set(interaction.user.id, Date.now());
 				
 				const done = new EmbedBuilder()
-					.setColor(client.color)
-					.setDescription(`ซื้อ ${food.emoji} ${food.name} สำเร็จ!`);
+					.setColor('#80DB79')
+					.setTitle('ซื้อสำเร็จ :')
+					.setDescription(`\` - \` 1x ${food.name}`);
 				try {
 					await msg.edit({ embeds: [done], components: [], files: [] });
 				} catch (error) {
@@ -583,6 +641,12 @@ function buildPaginationRow(page, totalPages, baseId) {
 	const next = new ButtonBuilder().setCustomId(`${baseId}_next`).setLabel('▶').setStyle(ButtonStyle.Primary).setDisabled(page >= totalPages - 1);
 	const last = new ButtonBuilder().setCustomId(`${baseId}_last`).setLabel('⏭').setStyle(ButtonStyle.Primary).setDisabled(page >= totalPages - 1);
 	return new ActionRowBuilder().addComponents(first, prev, label, next, last);
+}
+
+function buildActionRow(baseId) {
+	const back = new ButtonBuilder().setCustomId(`${baseId}_back`).setLabel('ย้อนกลับ').setStyle(ButtonStyle.Secondary);
+	const cancel = new ButtonBuilder().setCustomId(`${baseId}_cancel`).setLabel('ยกเลิก').setStyle(ButtonStyle.Danger);
+	return new ActionRowBuilder().addComponents(back, cancel);
 }
 
 function Commas(x) { return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","); }

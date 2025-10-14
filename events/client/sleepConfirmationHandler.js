@@ -3,7 +3,7 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
   name: Events.InteractionCreate,
-  async execute(interaction) {
+  async execute(client, interaction) {
     // จัดการปุ่มยืนยันการนอน
     if (interaction.isButton()) {
       if (interaction.customId.startsWith('sleep_confirm_') || interaction.customId.startsWith('sleep_cancel_')) {

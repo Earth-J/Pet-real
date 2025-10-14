@@ -83,6 +83,11 @@ const Create = Schema({
         FLOORI: String,
         FLOORD: Boolean
     },
+    // Tile layer
+    TILE_DATA: {
+        TILE: Boolean,
+        TILEI: String
+    },
     /// Wallpapers
     WALL_DATA: {
         L1: Boolean,

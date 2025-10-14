@@ -1771,32 +1771,42 @@ const saveR4 = async function (interaction, id, msg, message, check, renderUrl) 
 };
 
 const saveFLOOR = async function (interaction, id, msg, message, check, renderUrl) {
-    if (!interaction && !interaction.channel) throw new Error('Channel is inaccessible.');
+    if (!interaction?.channel) throw new Error('Channel is inaccessible.');
 
     const button = new ActionRowBuilder()
     .addComponents(
         new ButtonBuilder()
             .setCustomId("save_floor")
-            .setLabel("Save")
-            
+            .setLabel("ยืนยัน")
             .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
             .setCustomId("exit_floor")
-            .setLabel("Exit")
+            .setLabel("ยกเลิก")
             .setStyle(ButtonStyle.Danger),
     )
 
-    await msg.edit({ content: "Save or Exit?", components: [button] });
+    await interaction.editReply({ content: "ยืนยันการเปลี่ยนเเปลงมั้ย?", embeds: [], components: [button], files: [] });
 
     let filter = (m) => m.user.id === interaction.user.id;
-    let collector = await msg.createMessageComponentCollector({ filter, time: 300000 });
+    let collector = interaction.channel.createMessageComponentCollector({ filter, time: 300000 });
 
     const home = await GHouse.findOne({ guild: interaction.guild.id, user: interaction.user.id });
     const inv = await GInv.findOne({ guild: interaction.guild.id, user: interaction.user.id });
 
+    let processed = false;
+
     collector.on('collect', async (menu) => {
         if(menu.isButton()) {
             await menu.deferUpdate();
+            if (processed) return;
+            processed = true;
+
+            const disabledRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId("save_floor").setLabel("ยืนยัน").setStyle(ButtonStyle.Success).setDisabled(true),
+                new ButtonBuilder().setCustomId("exit_floor").setLabel("ยกเลิก").setStyle(ButtonStyle.Danger).setDisabled(true),
+            );
+            try { await interaction.editReply({ components: [disabledRow] }); } catch {}
+
             if(menu.customId === "save_floor") {
                 /// remove item
                 inv.item.splice(inv.item.findIndex(x => x.id === id), 1);
@@ -1805,8 +1815,7 @@ const saveFLOOR = async function (interaction, id, msg, message, check, renderUr
                 home.house = getFinalUrl(message, renderUrl);
                 home.save();
 
-
-                msg.edit({ content: "House has saved.", files: [], components: [] })
+                await interaction.editReply({ content: "บันทึกสำเร็จ", embeds: [], files: [], components: [] });
 
                 collector.stop();
             } else if (menu.customId === "exit_floor") {
@@ -1815,7 +1824,7 @@ const saveFLOOR = async function (interaction, id, msg, message, check, renderUr
                 home.FLOOR_DATA.FLOORI = "";
                 await home.save();
 
-                msg.edit({ content: "Your cancel edit the house.", files: [], components: [] })
+                await interaction.editReply({ content: "ยกเลิกการเปลี่ยนเเปลง", embeds: [], files: [], components: [] });
 
                 collector.stop();
             }
@@ -1828,11 +1837,89 @@ const saveFLOOR = async function (interaction, id, msg, message, check, renderUr
             home.FLOOR_DATA.FLOORI = "";
             await home.save();
 
-            msg.edit({ content: "Time is out. Auto cancel edit.", files: [], components: [] })
+            await interaction.editReply({ content: "หมดเวลา ยกเลิกการเปลี่ยนเเปลง", embeds: [], files: [], components: [] }).catch(() => {});
         }
     });
 
     return;
 };
 
-module.exports = { saveFLOOR, saveA1, saveA2, saveA3, saveA4, saveB1, saveB2, saveB3, saveB4, saveC1, saveC2, saveC3, saveC4, saveD1, saveD2, saveD3, saveD4, saveL1, saveL2, saveL3, saveL4, saveR1, saveR2, saveR3, saveR4 };
+const saveTILE = async function (interaction, id, msg, message, check, renderUrl) {
+    if (!interaction?.channel) throw new Error('Channel is inaccessible.');
+
+    const button = new ActionRowBuilder()
+    .addComponents(
+        new ButtonBuilder()
+            .setCustomId("save_tile")
+            .setLabel("ยืนยัน")
+            .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+            .setCustomId("exit_tile")
+            .setLabel("ยกเลิก")
+            .setStyle(ButtonStyle.Danger),
+    )
+
+    await interaction.editReply({ content: "ยืนยันการเปลี่ยนเเปลงมั้ย?", embeds: [], components: [button], files: [] });
+
+    let filter = (m) => m.user.id === interaction.user.id;
+    let collector = interaction.channel.createMessageComponentCollector({ filter, time: 300000 });
+
+    const home = await GHouse.findOne({ guild: interaction.guild.id, user: interaction.user.id });
+    const inv = await GInv.findOne({ guild: interaction.guild.id, user: interaction.user.id });
+
+    let processed = false;
+
+    collector.on('collect', async (menu) => {
+        if(menu.isButton()) {
+            await menu.deferUpdate();
+            if (processed) return;
+            processed = true;
+
+            const disabledRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId("save_tile").setLabel("ยืนยัน").setStyle(ButtonStyle.Success).setDisabled(true),
+                new ButtonBuilder().setCustomId("exit_tile").setLabel("ยกเลิก").setStyle(ButtonStyle.Danger).setDisabled(true),
+            );
+            try { await interaction.editReply({ components: [disabledRow] }); } catch {}
+
+            if(menu.customId === "save_tile") {
+                /// remove item
+                inv.item.splice(inv.item.findIndex(x => x.id === id), 1);
+                inv.save();
+                // save link
+                home.house = getFinalUrl(message, renderUrl);
+                // persist TILE_DATA
+                if (!home.TILE_DATA) home.TILE_DATA = { TILE: false, TILEI: "" };
+                home.TILE_DATA.TILE = true;
+                home.TILE_DATA.TILEI = check?.name || "";
+                home.save();
+
+                await interaction.editReply({ content: "บันทึกสำเร็จ", embeds: [], files: [], components: [] });
+
+                collector.stop();
+            } else if (menu.customId === "exit_tile") {
+                // place tile
+                home.TILE_DATA.TILE = false;
+                home.TILE_DATA.TILEI = "";
+                await home.save();
+
+                await interaction.editReply({ content: "ยกเลิกการเปลี่ยนเเปลง", embeds: [], files: [], components: [] });
+
+                collector.stop();
+            }
+        }
+    });
+
+    collector.on('end', async (collected, reason) => {
+        if(reason === 'time') {
+            home.TILE_DATA.TILE = false;
+            home.TILE_DATA.TILEI = "";
+            await home.save();
+
+            await interaction.editReply({ content: "หมดเวลา ยกเลิกการเปลี่ยนเเปลง", embeds: [], files: [], components: [] }).catch(() => {});
+        }
+    });
+
+    return;
+};
+
+module.exports = { saveFLOOR, saveTILE, saveA1, saveA2, saveA3, saveA4, saveB1, saveB2, saveB3, saveB4, saveC1, saveC2, saveC3, saveC4, saveD1, saveD2, saveD3, saveD4, saveL1, saveL2, saveL3, saveL4, saveR1, saveR2, saveR3, saveR4 };

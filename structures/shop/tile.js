@@ -2,13 +2,13 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, AttachmentBuild
 const Canvas = require("@napi-rs/canvas");
 const GProfile = require("../../settings/models/profile.js");
 const GInv = require("../../settings/models/inventory.js");
-const floorList = require("../../settings/floor_price.json");
+const tileList = require("../../settings/tile_price.json");
 
-const shopFloor = async (client, interaction, msg, item) => {
+const shopTile = async (client, interaction, msg, item) => {
     if (!interaction && !interaction.channel) throw new Error('Channel is inaccessible.');
 
-        // Use floor list from JSON
-        const object = Array.isArray(floorList) ? floorList : [];
+        // Use tile list from JSON
+        const object = Array.isArray(tileList) ? tileList : [];
 
         const itemsPerPage = 6;
         const totalPages = Math.max(1, Math.ceil(object.length / itemsPerPage));
@@ -20,7 +20,7 @@ const shopFloor = async (client, interaction, msg, item) => {
             const pageItems = object.slice(start, end);
             return new ActionRowBuilder().addComponents(
                 new StringSelectMenuBuilder()
-                    .setCustomId("shop_floor")
+                    .setCustomId("shop_tile")
                     .setPlaceholder(`เลือกสินค้าที่ต้องการซื้อ • หน้า ${page + 1}/${totalPages}`)
                     .setMaxValues(1)
                     .setMinValues(1)
@@ -33,16 +33,16 @@ const shopFloor = async (client, interaction, msg, item) => {
         };
 
         const buildNavRow = () => new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('shop_floor_first').setLabel('⏮').setStyle(ButtonStyle.Secondary).setDisabled(page === 0 || totalPages <= 1),
-            new ButtonBuilder().setCustomId('shop_floor_prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(page === 0 || totalPages <= 1),
-            new ButtonBuilder().setCustomId('shop_floor_label').setLabel(`${page + 1} / ${totalPages}`).setStyle(ButtonStyle.Secondary).setDisabled(true),
-            new ButtonBuilder().setCustomId('shop_floor_next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(page >= totalPages - 1 || totalPages <= 1),
-            new ButtonBuilder().setCustomId('shop_floor_last').setLabel('⏭').setStyle(ButtonStyle.Secondary).setDisabled(page >= totalPages - 1 || totalPages <= 1)
+            new ButtonBuilder().setCustomId('shop_tile_first').setLabel('⏮').setStyle(ButtonStyle.Secondary).setDisabled(page === 0 || totalPages <= 1),
+            new ButtonBuilder().setCustomId('shop_tile_prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(page === 0 || totalPages <= 1),
+            new ButtonBuilder().setCustomId('shop_tile_label').setLabel(`${page + 1} / ${totalPages}`).setStyle(ButtonStyle.Secondary).setDisabled(true),
+            new ButtonBuilder().setCustomId('shop_tile_next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(page >= totalPages - 1 || totalPages <= 1),
+            new ButtonBuilder().setCustomId('shop_tile_last').setLabel('⏭').setStyle(ButtonStyle.Secondary).setDisabled(page >= totalPages - 1 || totalPages <= 1)
         );
 
         const buildActionRow = () => new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('shop_floor_back').setLabel('ย้อนกลับ').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('shop_floor_cancel').setLabel('ยกเลิก').setStyle(ButtonStyle.Danger)
+            new ButtonBuilder().setCustomId('shop_tile_back').setLabel('ย้อนกลับ').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('shop_tile_cancel').setLabel('ยกเลิก').setStyle(ButtonStyle.Danger)
         );
 
         const profile = await GProfile.findOne({ guild: interaction.guild.id, user: interaction.user.id });
@@ -50,7 +50,7 @@ const shopFloor = async (client, interaction, msg, item) => {
 
         const buildPageImageUrl = () => {
             const pageNum = String(page + 1).padStart(3, '0');
-            return `https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/shop/floor/page-${pageNum}.png`;
+            return `https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/shop/tile/page-${pageNum}.png`;
         };
         const buildRenderedEmbed = async () => {
             const width = 494;
@@ -82,7 +82,7 @@ const shopFloor = async (client, interaction, msg, item) => {
 
         collector.on('collect', async (menu) => {
             if(menu.isSelectMenu && menu.isSelectMenu()) {
-                if(menu.customId === "shop_floor") {
+                if(menu.customId === "shop_tile") {
                     await menu.deferUpdate();
                     let [ directory ] = menu.values;
 
@@ -95,7 +95,7 @@ const shopFloor = async (client, interaction, msg, item) => {
 
                     inv.item.push({
                         name: item.name,
-                        type: 'floor',
+                        type: 'tile',
                         price: item.price,
                         id: generateID()
                     });
@@ -110,40 +110,40 @@ const shopFloor = async (client, interaction, msg, item) => {
                     await menu.followUp({ embeds: [bought] });
                 }
             } else if (menu.isButton && menu.isButton()) {
-                if (menu.customId === 'shop_floor_first') {
+                if (menu.customId === 'shop_tile_first') {
                     await menu.deferUpdate();
                     page = 0;
                     await renderAndEdit();
-                } else if (menu.customId === 'shop_floor_prev') {
+                } else if (menu.customId === 'shop_tile_prev') {
                     await menu.deferUpdate();
                     page = Math.max(0, page - 1);
                     await renderAndEdit();
-                } else if (menu.customId === 'shop_floor_prev5') {
+                } else if (menu.customId === 'shop_tile_prev5') {
                     await menu.deferUpdate();
                     page = Math.max(0, page - 5);
                     await renderAndEdit();
-                } else if (menu.customId === 'shop_floor_next') {
+                } else if (menu.customId === 'shop_tile_next') {
                     await menu.deferUpdate();
                     page = Math.min(totalPages - 1, page + 1);
                     await renderAndEdit();
-                } else if (menu.customId === 'shop_floor_next5') {
+                } else if (menu.customId === 'shop_tile_next5') {
                     await menu.deferUpdate();
                     page = Math.min(totalPages - 1, page + 5);
                     await renderAndEdit();
-                } else if (menu.customId === 'shop_floor_last') {
+                } else if (menu.customId === 'shop_tile_last') {
                     await menu.deferUpdate();
                     page = Math.max(0, totalPages - 1);
                     await renderAndEdit();
-                } else if (menu.customId === 'shop_floor_back') {
+                } else if (menu.customId === 'shop_tile_back') {
                     await menu.deferUpdate();
                     collector.stop();
                     const { openShopMenu } = require('../../commands/General/Shop.js');
                     return await openShopMenu(client, interaction, msg);
-                } else if (menu.customId === 'shop_floor_cancel') {
+                } else if (menu.customId === 'shop_tile_cancel') {
                     await menu.deferUpdate();
                     await msg.edit({ components: [], files: [], content: 'ยกเลิกการซื้อแล้ว'  ,embeds: []});
                     collector.stop();
-                } else if (menu.customId === 'shop_floor_close') {
+                } else if (menu.customId === 'shop_tile_close') {
                     await menu.deferUpdate();
                     await msg.edit({ components: [], files: [], content: 'ปิดร้านแล้ว' ,embeds: [] });
                     collector.stop();
@@ -176,4 +176,4 @@ function generateID() {
     return crypto.randomBytes(16).toString('base64');
 };
 
-module.exports = { shopFloor };
+module.exports = { shopTile };

@@ -11,13 +11,15 @@ const POOP_IMAGE_URL = "https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/poop.
 // ใช้ค่ากลางของพิกัดสล็อต poop
 const { SLOT_DRAWS, SLOT_ORDER } = require("../structures/constants/poopSlots");
 
-// ตรวจว่าสล็อตถูกครอบครองหรือไม่
+// ตรวจว่าสล็อตถูกครอบครองหรือไม่ (เฟอร์นิเจอร์/สล็อตรอง/หรือมีขี้อยู่แล้ว)
 function isSlotOccupied(home, slot) {
   const group = slot[0];
   const groupKey = `${group}_DATA`;
   const boolKey = `${slot}`;
   const idKey = `${slot}I`;
-  return Boolean(home?.[groupKey]?.[boolKey]) || Boolean(home?.[groupKey]?.[idKey]);
+  const hasFurnitureOrOccupiedFlag = Boolean(home?.[groupKey]?.[boolKey]) || Boolean(home?.[groupKey]?.[idKey]);
+  const hasPoop = Boolean(home?.POOP_DATA?.[slot] === true);
+  return hasFurnitureOrOccupiedFlag || hasPoop;
 }
 
 // ตรวจว่าสล็อตถูกปิดใช้งานหรือไม่
@@ -28,12 +30,12 @@ function isSlotDisabled(home, slot) {
   return Boolean(home?.[groupKey]?.[disabledKey]);
 }
 
-// หาสล็อตว่างที่สุ่มได้
+// หาสล็อตว่างที่สุ่มได้ (ไม่มีเฟอร์นิเจอร์/ไม่ถูกปิด/ไม่มีขี้อยู่แล้ว)
 function getRandomEmptySlot(home) {
   const SLOT_Z_ORDER = SLOT_ORDER;
-  const empties = SLOT_Z_ORDER.filter(s => !isSlotOccupied(home, s) && !isSlotDisabled(home, s));
+  const empties = SLOT_Z_ORDER.filter((s) => !isSlotOccupied(home, s) && !isSlotDisabled(home, s));
   if (empties.length === 0) return null;
-  
+
   const randomSlot = empties[Math.floor(Math.random() * empties.length)];
   return { slot: randomSlot, draw: SLOT_DRAWS[randomSlot] };
 }
@@ -66,11 +68,13 @@ async function renderHouseWithPoop(home, poopSlot) {
   try {
     const { buildHouseLayers } = require("../structures/services/layout");
     let houseLayers = buildHouseLayers(home);
-    
-    // เพิ่ม poop layer
+
+    // เพิ่ม poop layer ใต้เฟอร์นิเจอร์ (แทรกระหว่าง base layers กับ furniture)
     const poopLayer = createPoopLayer(poopSlot);
     if (poopLayer) {
-      houseLayers.push(poopLayer);
+      const baseLayers = houseLayers.filter(l => l.type !== 'furniture');
+      const furnitureLayers = houseLayers.filter(l => l.type === 'furniture');
+      houseLayers = [...baseLayers, poopLayer, ...furnitureLayers];
     }
     
     const queue = getRenderQueue();

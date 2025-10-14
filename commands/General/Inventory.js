@@ -32,7 +32,7 @@ module.exports = {
             const cooldownEmbed = new EmbedBuilder()
                 .setColor(client.color)
                 .setTitle("⏰ กรุณารอสักครู่")
-                .setDescription(`คุณต้องรอ **${cooldownRemaining} วินาที** ก่อนที่จะเปิด inventory ได้อีกครั้ง`);
+                .setDescription(`คุณต้องรอ **${cooldownRemaining} วินาที** ก่อนที่จะเปิดกระเป๋าได้อีกครั้ง`);
             return interaction.editReply({ embeds: [cooldownEmbed] });
         }
 
@@ -57,6 +57,9 @@ module.exports = {
 
         const sFood = [];
         const sCleaning = [];
+        const sFurniture = [];
+        const sFloor = [];
+        const sTile = [];
 
         for (let i = 0; i < result.length; i++) {
             const type = result[i].type;
@@ -68,6 +71,12 @@ module.exports = {
                 const status = used >= capacity ? "เต็ม" : "ว่าง";
                 const emoji = used >= capacity ? "🔴" : "🟢";
                 sCleaning.push(`${result[i].emoji || "🗑️"} ${toOppositeCase(result[i].name)} (x${result[i].count}) - ${emoji} ${status} (${used}/${capacity})`);
+            } else if (type === "furniture") {
+                sFurniture.push(`${result[i].emoji || "🪑"} ${toOppositeCase(result[i].name)} (x${result[i].count})`);
+            } else if (type === "floor") {
+                sFloor.push(`${result[i].emoji || "🏠"} ${toOppositeCase(result[i].name)} (x${result[i].count})`);
+            } else if (type === "tile") {
+                sTile.push(`${result[i].emoji || "🧱"} ${toOppositeCase(result[i].name)} (x${result[i].count})`);
             }
         }
 
@@ -83,6 +92,9 @@ module.exports = {
                 .setOptions([
                     { label: "🐾 อาหารสัตว์เลี้ยง", description: "ดูอาหารที่ใช้กับสัตว์เลี้ยง", value: "pet" },
                     { label: "🗑️ ถุงขยะ", description: "ดูถุงขยะสำหรับเก็บขี้", value: "cleaning" },
+                    { label: "🪑 เฟอร์นิเจอร์", description: "ดูเฟอร์นิเจอร์สำหรับตกแต่งบ้าน", value: "furniture" },
+                    { label: "🧱 กระเบื้อง", description: "ดูกระเบื้องสำหรับตกแต่งบ้าน", value: "floor" },
+                    { label: "🏠 วอลเปเปอร์", description: "ดูวอลเปเปอร์สำหรับตกแต่งบ้าน", value: "tile" },
                 ])
         ]);
 
@@ -97,7 +109,7 @@ module.exports = {
 
         // แสดงรายการอาหารสัตว์เลี้ยงและถุงขยะ
         const embed = new EmbedBuilder()
-            .setAuthor({ name: `${interaction.user.username}'s Inventory`, iconURL: interaction.user.displayAvatarURL() })
+            .setAuthor({ name: `${interaction.user.username}'s`, iconURL: interaction.user.displayAvatarURL() })
             .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/706473362813091931.gif")
             .setDescription(`พื้นที่กระเป๋า: (${totalBackpack})\nเลือกหมวดจากเมนูด้านล่างเพื่อแสดงรายการ`)
             .setColor(client.color);
@@ -136,7 +148,7 @@ module.exports = {
 
             if (selected === "pet") {
                 const embed = new EmbedBuilder()
-                    .setAuthor({ name: `${interaction.user.username}'s Inventory • อาหารสัตว์เลี้ยง`, iconURL: interaction.user.displayAvatarURL() })
+                    .setAuthor({ name: `${interaction.user.username}'s • อาหารสัตว์เลี้ยง`, iconURL: interaction.user.displayAvatarURL() })
                     .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/food.png")
                     .setDescription(`พื้นที่กระเป๋า: (${totalBackpack})`)
                     .addFields(
@@ -149,11 +161,50 @@ module.exports = {
 
             if (selected === "cleaning") {
                 const embed = new EmbedBuilder()
-                    .setAuthor({ name: `${interaction.user.username}'s Inventory • ถุงขยะ`, iconURL: interaction.user.displayAvatarURL() })
+                    .setAuthor({ name: `${interaction.user.username}'s • ถุงขยะ`, iconURL: interaction.user.displayAvatarURL() })
                     .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/garbage.png")
                     .setDescription(`พื้นที่กระเป๋า: (${totalBackpack})`)
                     .addFields(
                         { name: "🗑️ ถุงขยะ", value: `${sCleaning.join("\n") || "ไม่มีอะไรเลย !"}`, inline: false },
+                    )
+                    .setColor(client.color);
+
+                await msg.edit({ embeds: [embed], components: [selectRow, closeRow] });
+            }
+
+            if (selected === "furniture") {
+                const embed = new EmbedBuilder()
+                    .setAuthor({ name: `${interaction.user.username}'s • เฟอร์นิเจอร์`, iconURL: interaction.user.displayAvatarURL() })
+                    .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/furniture.png")
+                    .setDescription(`พื้นที่กระเป๋า: (${totalBackpack})`)
+                    .addFields(
+                        { name: "🪑 เฟอร์นิเจอร์", value: `${sFurniture.join("\n") || "ไม่มีอะไรเลย !"}`, inline: false },
+                    )
+                    .setColor(client.color);
+
+                await msg.edit({ embeds: [embed], components: [selectRow, closeRow] });
+            }
+
+            if (selected === "floor") {
+                const embed = new EmbedBuilder()
+                    .setAuthor({ name: `${interaction.user.username}'s • กระเบื้อง`, iconURL: interaction.user.displayAvatarURL() })
+                    .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/floor.png")
+                    .setDescription(`พื้นที่กระเป๋า: (${totalBackpack})`)
+                    .addFields(
+                        { name: "🧱 กระเบื้อง", value: `${sFloor.join("\n") || "ไม่มีอะไรเลย !"}`, inline: false },
+                    )
+                    .setColor(client.color);
+
+                await msg.edit({ embeds: [embed], components: [selectRow, closeRow] });
+            }
+
+            if (selected === "tile") {
+                const embed = new EmbedBuilder()
+                    .setAuthor({ name: `${interaction.user.username}'s • วอลเปเปอร์`, iconURL: interaction.user.displayAvatarURL() })
+                    .setThumbnail("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/tile.png")
+                    .setDescription(`พื้นที่กระเป๋า: (${totalBackpack})`)
+                    .addFields(
+                        { name: "🏠 วอลเปเปอร์", value: `${sTile.join("\n") || "ไม่มีอะไรเลย !"}`, inline: false },
                     )
                     .setColor(client.color);
 

@@ -48,7 +48,7 @@ const shopFood = async (client, interaction, msg, item) => {
         const canvas = Canvas.createCanvas(450, 300);
         const ctx = canvas.getContext("2d");
 
-        const shop = await Canvas.loadImage("./assests/shop/four.png");
+        const shop = await Canvas.loadImage("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/shop/four.png");
         ctx.drawImage(shop, 0, 0, canvas.width, canvas.height);
 
         const attc = new AttachmentBuilder(await canvas.encode("png"), { name: `four.png` })
@@ -88,9 +88,9 @@ const shopFood = async (client, interaction, msg, item) => {
                     });
 
                     const bought = new EmbedBuilder()
-                        .setDescription("ซื้อสำเร็จ: " + item.name)
-                        .setColor(client.color)
-
+                        .setColor('#80DB79')
+                        .setTitle('ซื้อสำเร็จ :')
+                        .setDescription(`\` - \` 1x ${item.name}`)
                     await profile.save();
                     await inv.save();
 

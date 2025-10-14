@@ -1,5 +1,41 @@
 module.exports = async(client, interaction) => {
-    if (interaction.isCommand || interaction.isContextMenuCommand || interaction.isModalSubmit || interaction.isChatInputCommand) {
+    // Check if interaction exists
+    if (!interaction) {
+        console.error("Interaction is undefined or null");
+        return;
+    }
+    
+    // Handle autocomplete separately (no replies should be sent here besides respond())
+    if (interaction.isAutocomplete()) {
+        try {
+            const command = client.slash.find(command => {
+                switch (command.name.length) {
+                    case 1: return command.name[0] == interaction.commandName;
+                    case 2: {
+                        let sub = ""; try { sub = interaction.options.getSubcommand(); } catch {};
+                        return command.name[0] == interaction.commandName && command.name[1] == sub;
+                    }
+                    case 3: {
+                        let sub = ""; try { sub = interaction.options.getSubcommand(); } catch {};
+                        let grp = ""; try { grp = interaction.options.getSubcommandGroup(); } catch {};
+                        return command.name[0] == interaction.commandName && command.name[1] == grp && command.name[2] == sub;
+                    }
+                }
+            });
+            if (!command || typeof command.autocomplete !== 'function') return;
+            await command.autocomplete(client, interaction);
+        } catch (e) {
+            try { await interaction.respond([]); } catch {}
+        }
+        return;
+    }
+
+    if (interaction.isModalSubmit()) {
+        // ไม่มี modal พิเศษจาก UI demo อีกต่อไป
+        return;
+    }
+
+    if (interaction.isCommand || interaction.isContextMenuCommand || interaction.isChatInputCommand) {
         if (!interaction.guild) return;
 
         await client.createHome(interaction.guild.id, interaction.user.id);
@@ -39,7 +75,7 @@ module.exports = async(client, interaction) => {
 
         console.log(`${msg_cmd.join(" ")}`);
 
-    if (command) {
+        if (command) {
         try {
             command.run(client, interaction);
         } catch (error) {

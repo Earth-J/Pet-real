@@ -85,6 +85,11 @@ module.exports = async (client) => {
                     FLOORI: "",
                     FLOORD: false
                 },
+                TILE_DATA: {
+                    TILE: false,
+                    TILEI: "",
+                    TILED: false
+                },
                 WALL_DATA: {
                     L1: false,
                     L1I: "",
@@ -176,7 +181,8 @@ module.exports = async (client) => {
                 fatigue: 0,
                 fireStreak: 0,
                 lastActivityDate: '',
-                spriteGifUrl: ''
+                spriteGifUrl: '',
+                claimedRewards: []
             });
             await newPet.save();
         }

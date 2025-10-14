@@ -6,11 +6,19 @@ function initPetDirtinessSystem() {
     console.log('[PET_DIRTINESS] Initializing pet dirtiness system...');
     
     // รันทุกๆ 10 นาที
+    let isRunning = false;
     cron.schedule('*/10 * * * *', async () => {
+        if (isRunning) {
+            console.warn('[PET_DIRTINESS] Previous update still running, skipping this schedule');
+            return;
+        }
+        isRunning = true;
         try {
             await updateAllPetsDirtiness();
         } catch (error) {
             console.error('[PET_DIRTINESS] Error updating pet dirtiness:', error);
+        } finally {
+            isRunning = false;
         }
     });
     

@@ -12,7 +12,7 @@ module.exports = async (client) => {
                 client.on(eName, evt.bind(null, client));
             } else if (evt.name && evt.execute) {
                 // สำหรับ Discord.js v14+ event format
-                client.on(evt.name, evt.execute);
+                client.on(evt.name, evt.execute.bind(null, client));
             } else {
                 console.warn(`[WARNING] Event ${file} is not in the correct format`);
             }

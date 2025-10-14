@@ -7,7 +7,7 @@ const { isLocalServiceUrl, fetchBuffer, uploadFromUrlToInteraction } = require("
 const { buildHouseLayers } = require("../services/layout");
 const { findInInventory } = require("../utils/inventoryHelper");
 
-const editFloor = async (client, interaction, msg, item, type, id) => {
+const editTile = async (client, interaction, msg, item, type, id) => {
     if (!interaction?.channel) {
         throw new Error('Channel is inaccessible.');
     }
@@ -15,48 +15,48 @@ const editFloor = async (client, interaction, msg, item, type, id) => {
     const home = await GHouse.findOne({ guild: interaction.guild.id, user: interaction.user.id });
     const inv = await GInv.findOne({ guild: interaction.guild.id, user: interaction.user.id });
 
-    // Initialize FLOOR_DATA if not exists
-    if (!home.FLOOR_DATA) {
-        home.FLOOR_DATA = { FLOOR: false, FLOORI: null };
+    // Initialize TILE_DATA if not exists
+    if (!home.TILE_DATA) {
+        home.TILE_DATA = { TILE: false, TILEI: null };
     }
 
     const check = findInInventory(inv, x => x.id === id);
 
-    // Check if floor already placed
-    if (home.FLOOR_DATA.FLOORI === check.name) {
+    // Check if tile already placed
+    if (home.TILE_DATA.TILEI === check.name) {
         await interaction.followUp({ 
-            content: "คุณวางกระเบื้องนี้แล้ว!", 
+            content: "คุณวางวอลเปเปอร์นี้แล้ว!", 
             ephemeral: true 
         });
         return;
     }
 
     // Store original values for rollback
-    const originalFloor = home.FLOOR_DATA.FLOOR;
-    const originalFloorI = home.FLOOR_DATA.FLOORI;
+    const originalTile = home.TILE_DATA.TILE;
+    const originalTileI = home.TILE_DATA.TILEI;
 
     // Rollback helper
-    const rollbackFloor = () => {
-        home.FLOOR_DATA.FLOOR = originalFloor;
-        home.FLOOR_DATA.FLOORI = originalFloorI;
+    const rollbackTile = () => {
+        home.TILE_DATA.TILE = originalTile;
+        home.TILE_DATA.TILEI = originalTileI;
     };
 
-    // คืน floor เก่ากลับคลังก่อนวางของใหม่
-    if (originalFloorI && originalFloorI !== check.name) {
+    // คืน tile เก่ากลับคลังก่อนวางของใหม่
+    if (originalTileI && originalTileI !== check.name) {
         const { returnItemToInventory } = require('./removeFurniture.js');
-        await returnItemToInventory(inv, originalFloorI, 'floor');
+        await returnItemToInventory(inv, originalTileI, 'tile');
     }
 
-    // Temporarily update floor data (not saved until user clicks Save)
-    home.FLOOR_DATA.FLOOR = true;
-    home.FLOOR_DATA.FLOORI = check.name;
+    // Temporarily update tile data (not saved until user clicks Save)
+    home.TILE_DATA.TILE = true;
+    home.TILE_DATA.TILEI = check.name;
 
     const queue = getRenderQueue();
 
     try {
         // Show ephemeral loading message
         const loadingMsg = await interaction.followUp({ 
-            content: `🧩 อัปเดตพื้นสำเร็จ กำลังเรนเดอร์ ตัวอย่างบ้าน...`, 
+            content: `🧩 อัปเดตกระเบื้องสำเร็จ กำลังเรนเดอร์ ตัวอย่างบ้าน...`, 
             ephemeral: true 
         });
         
@@ -82,15 +82,15 @@ const editFloor = async (client, interaction, msg, item, type, id) => {
 
         const buttons = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('preview_save_floor')
+                .setCustomId('preview_save_tile')
                 .setLabel('บันทึก')
                 .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
-                .setCustomId('preview_back_floor')
+                .setCustomId('preview_back_tile')
                 .setLabel('ย้อนกลับ')
                 .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
-                .setCustomId('preview_cancel_floor')
+                .setCustomId('preview_cancel_tile')
                 .setLabel('ยกเลิก')
                 .setStyle(ButtonStyle.Danger)
         );
@@ -122,14 +122,14 @@ const editFloor = async (client, interaction, msg, item, type, id) => {
 
             // disable buttons immediately
             const disabledButtons = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('preview_save_floor').setLabel('บันทึก').setStyle(ButtonStyle.Success).setDisabled(true),
-                new ButtonBuilder().setCustomId('preview_back_floor').setLabel('ย้อนกลับ').setStyle(ButtonStyle.Secondary).setDisabled(true),
-                new ButtonBuilder().setCustomId('preview_cancel_floor').setLabel('ยกเลิก').setStyle(ButtonStyle.Danger).setDisabled(true)
+                new ButtonBuilder().setCustomId('preview_save_tile').setLabel('บันทึก').setStyle(ButtonStyle.Success).setDisabled(true),
+                new ButtonBuilder().setCustomId('preview_back_tile').setLabel('ย้อนกลับ').setStyle(ButtonStyle.Secondary).setDisabled(true),
+                new ButtonBuilder().setCustomId('preview_cancel_tile').setLabel('ยกเลิก').setStyle(ButtonStyle.Danger).setDisabled(true)
             );
             try { await interaction.editReply({ components: [disabledButtons] }); } catch {}
 
             switch (i.customId) {
-                case 'preview_save_floor': {
+                case 'preview_save_tile': {
                     collector.stop();
                     let finalUrl = result.url;
                     if (isLocalServiceUrl(finalUrl, process.env.RENDER_SERVICE_URL)) {
@@ -149,11 +149,11 @@ const editFloor = async (client, interaction, msg, item, type, id) => {
                         }
                     } catch {}
 
-                    // persist house image and floor state
+                    // persist house image and tile state
                     home.house = finalUrl;
-                    if (!home.FLOOR_DATA) home.FLOOR_DATA = { FLOOR: false, FLOORI: "" };
-                    home.FLOOR_DATA.FLOOR = true;
-                    home.FLOOR_DATA.FLOORI = check?.name || home.FLOOR_DATA.FLOORI || "";
+                    if (!home.TILE_DATA) home.TILE_DATA = { TILE: false, TILEI: "" };
+                    home.TILE_DATA.TILE = true;
+                    home.TILE_DATA.TILEI = check?.name || home.TILE_DATA.TILEI || "";
                     await home.save();
 
                     const savedEmbed = new EmbedBuilder().setColor(client.color).setDescription('บันทึกบ้านเรียบร้อยแล้ว');
@@ -161,20 +161,20 @@ const editFloor = async (client, interaction, msg, item, type, id) => {
                     break;
                 }
 
-                case 'preview_back_floor': {
+                case 'preview_back_tile': {
                     processed = false; // allow new actions after back
-                    rollbackFloor();
+                    rollbackTile();
                     collector.stop();
                     
-                    const { selectFloor } = require('../select/floor.js');
+                    const { selectTile } = require('../select/tile.js');
                     const message = await interaction.fetchReply();
-                    await selectFloor(client, interaction, message);
+                    await selectTile(client, interaction, message);
                     break;
                 }
 
-                case 'preview_cancel_floor': {
+                case 'preview_cancel_tile': {
                     processed = false;
-                    rollbackFloor();
+                    rollbackTile();
                     collector.stop();
                     
                     await interaction.editReply({ 
@@ -190,7 +190,7 @@ const editFloor = async (client, interaction, msg, item, type, id) => {
 
         collector.on('end', async (collected, reason) => {
             if (reason === 'time') {
-                rollbackFloor();
+                rollbackTile();
                 
                 await interaction.editReply({ 
                     content: 'หมดเวลา ยกเลิกการแก้ไข',
@@ -202,7 +202,7 @@ const editFloor = async (client, interaction, msg, item, type, id) => {
         });
 
     } catch (error) {
-        console.error('Error rendering floor preview:', error);
+        console.error('Error rendering tile preview:', error);
         
         // Fallback: Show simple canvas image
         const canvas = Canvas.createCanvas(300, 300);
@@ -220,8 +220,8 @@ const editFloor = async (client, interaction, msg, item, type, id) => {
         });
         
         const replyMessage = await interaction.fetchReply();
-        await saveFLOOR(interaction, id, replyMessage, replyMessage, check);
+        await saveTILE(interaction, id, replyMessage, replyMessage, check);
     }
 };
 
-module.exports = { editFloor };
+module.exports = { editTile };

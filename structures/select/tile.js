@@ -1,24 +1,26 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-const { editFloor } = require("../edit/floor.js");
+const { editTile } = require("../edit/tile.js");
 const GInv = require("../../settings/models/inventory.js");
 const { forceUnlock } = require("../edit/furnitureUnified.js");
 const { filterInventory } = require("../utils/inventoryHelper");
 
-function getFloorEmoji(name) {
+function getTileEmoji(name) {
     const n = String(name || '').toLowerCase();
     if (n.includes('wood')) return '🪵';
     if (n.includes('iron')) return '⚙️';
     if (n.includes('gold')) return '🥇';
     if (n.includes('diamond')) return '💎';
     if (n.includes('emerald')) return '🟩';
-    return '🧱';
+    if (n.includes('marble')) return '⬜';
+    if (n.includes('stone')) return '🪨';
+    return '🟫';
 }
 
 function toOppositeCase(char) {
     return char.charAt(0).toUpperCase() + char.slice(1);
 }
 
-const selectFloor = async (client, interaction, msg) => {
+const selectTile = async (client, interaction, msg) => {
     if (!interaction?.channel) {
         throw new Error('Channel is inaccessible.');
     }
@@ -33,12 +35,12 @@ const selectFloor = async (client, interaction, msg) => {
         return interaction.editReply({ content: '', embeds: [errorEmbed], files: [], components: [] });
     }
 
-    const object = filterInventory(inv, x => x.type === "floor");
+    const object = filterInventory(inv, x => x.type === "tile");
 
     if (object.length === 0) {
         const emptyEmbed = new EmbedBuilder()
-            .setTitle('📦 ไม่มีกระเบื้อง')
-            .setDescription('คุณยังไม่มีกระเบื้องในคลัง')
+            .setTitle('📦 ไม่มีวอลเปเปอร์')
+            .setDescription('คุณยังไม่มีวอลเปเปอร์ในคลัง')
             .setColor('#E0E0E0');
         return interaction.editReply({ content: '', embeds: [emptyEmbed], files: [], components: [] });
     }
@@ -52,16 +54,16 @@ const selectFloor = async (client, interaction, msg) => {
         const slice = object.slice(start, start + pageSize);
         const lines = slice.map((key, idx) => {
             const indexLabel = start + idx + 1;
-            const emoji = getFloorEmoji(key.name);
+            const emoji = getTileEmoji(key.name);
             return `${indexLabel}. ${emoji} ${toOppositeCase(key.name)}`;
         });
         return new EmbedBuilder()
             .setAuthor({ 
-                name: `🧱 เลือกกระเบื้อง`, 
+                name: `🏠 เลือกวอลเปเปอร์`, 
                 iconURL: `https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/734801251501604995.webp` 
             })
             .setDescription(
-                `**เลือกกระเบื้องที่ต้องการวาง**\nพิมพ์ตัวเลขเพื่อเลือก (เช่น 1, 2, 3)\n\n${lines.length ? lines.join("\n") : "-"}`
+                `**เลือกวอลเปเปอร์ที่ต้องการวาง**\nพิมพ์ตัวเลขเพื่อเลือก (เช่น 1, 2, 3)\n\n${lines.length ? lines.join("\n") : "-"}`
             )
             .setFooter({ text: `📝 พิมพ์ตัวเลขในแชทเพื่อเลือก` })
             .setColor('#BAE1FF');
@@ -73,17 +75,17 @@ const selectFloor = async (client, interaction, msg) => {
         
         return new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('floor_prev')
+                .setCustomId('tile_prev')
                 .setLabel('⬅')
                 .setStyle(ButtonStyle.Primary)
                 .setDisabled(page <= 0),
             new ButtonBuilder()
-                .setCustomId('floor_label')
+                .setCustomId('tile_label')
                 .setLabel(`${displayPage} / ${maxPage}`)
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true),
             new ButtonBuilder()
-                .setCustomId('floor_next')
+                .setCustomId('tile_next')
                 .setLabel('➡')
                 .setStyle(ButtonStyle.Primary)
                 .setDisabled(page >= totalPages - 1 || totalPages === 0)
@@ -157,7 +159,7 @@ const selectFloor = async (client, interaction, msg) => {
         await menu.deferUpdate();
 
         switch (menu.customId) {
-            case 'floor_prev':
+            case 'tile_prev':
                 if (page > 0) page--;
                 await interaction.editReply({ 
                     embeds: [buildEmbed()], 
@@ -165,7 +167,7 @@ const selectFloor = async (client, interaction, msg) => {
                 });
                 break;
 
-            case 'floor_next':
+            case 'tile_next':
                 if (page < totalPages - 1) page++;
                 await interaction.editReply({ 
                     embeds: [buildEmbed()], 
@@ -231,7 +233,7 @@ const selectFloor = async (client, interaction, msg) => {
 
         const selected = object[idx - 1];
         await deleteMessage(m);
-        await editFloor(client, interaction, msg, selected.name, selected.type, selected.id);
+        await editTile(client, interaction, msg, selected.name, selected.type, selected.id);
         stopCollectors();
     });
 
@@ -239,7 +241,7 @@ const selectFloor = async (client, interaction, msg) => {
         if (reason === 'time') {
             const timed = new EmbedBuilder()
                 .setTitle('⏰ หมดเวลา')
-                .setDescription('หมดเวลาการเลือกกระเบื้องแล้ว\nกรุณาใช้คำสั่งใหม่อีกครั้ง')
+                .setDescription('หมดเวลาการเลือกวอลเปเปอร์แล้ว\nกรุณาใช้คำสั่งใหม่อีกครั้ง')
                 .setColor('#FFB3BA');
 
             await interaction.editReply({ content: '', embeds: [timed], components: [] });
@@ -254,4 +256,4 @@ const selectFloor = async (client, interaction, msg) => {
     return;
 };
 
-module.exports = { selectFloor };
+module.exports = { selectTile };
