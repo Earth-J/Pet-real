@@ -84,7 +84,7 @@ const shopFurniture = async (client, interaction, msg, options) => {
         await renderAndEdit();
 
         let filter = (m) => m.user.id === interaction.user.id;
-        let collector = await msg.createMessageComponentCollector({ filter, time: 300000 });
+        let collector = await msg.createMessageComponentCollector({ filter, idle: 300000 });
 
         collector.on('collect', async (menu) => {
             if(menu.isSelectMenu && menu.isSelectMenu()) {
@@ -121,7 +121,7 @@ const shopFurniture = async (client, interaction, msg, options) => {
             } else if (menu.isButton && menu.isButton()) {
                 if (menu.customId === 'shop_furniture_first') {
                     await menu.deferUpdate();
-                    page = 0;
+                    page = Math.max(0, page - 5);
                     await renderAndEdit();
                 } else if (menu.customId === 'shop_furniture_prev') {
                     await menu.deferUpdate();
@@ -141,7 +141,7 @@ const shopFurniture = async (client, interaction, msg, options) => {
                     await renderAndEdit();
                 } else if (menu.customId === 'shop_furniture_last') {
                     await menu.deferUpdate();
-                    page = Math.max(0, totalPages - 1);
+                    page = Math.min(totalPages - 1, page + 5);
                     await renderAndEdit();
                 } else if (menu.customId === 'shop_furniture_back') {
                     await menu.deferUpdate();
@@ -161,7 +161,7 @@ const shopFurniture = async (client, interaction, msg, options) => {
         });
 
         collector.on('end', async (collected, reason) => {
-            if(reason === 'time') {
+            if(reason === 'idle') {
                 const timed = new EmbedBuilder()
                     .setDescription(`หมดเวลาแล้ว`)
                     .setColor(client.color)

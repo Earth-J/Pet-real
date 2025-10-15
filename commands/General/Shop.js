@@ -195,7 +195,7 @@ async function openShopMenu(client, interaction, msg) {
 		}
 
 		const filter = (m) => m.user.id === interaction.user.id;
-		const collector = actualMsg.createMessageComponentCollector({ filter, time: 5 * 60 * 1000 });
+		const collector = actualMsg.createMessageComponentCollector({ filter, idle: 5 * 60 * 1000 });
 
 		collector.on('collect', async (selectMenu) => {
 			try {
@@ -247,7 +247,7 @@ async function openShopMenu(client, interaction, msg) {
 	});
 
 		collector.on('end', async (collected, reason) => {
-		if (reason === 'time') {
+		if (reason === 'idle') {
 			try {
 				const timed = new EmbedBuilder()
 					.setColor(client.color)
@@ -316,7 +316,7 @@ async function openCleaningShop(client, interaction, msg) {
             .setImage("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/shop/trash_bag-shop.png");
 
 		const filter = (m) => m.user.id === interaction.user.id;
-		const collector = msg.createMessageComponentCollector({ filter, time: 5 * 60 * 1000 });
+		const collector = msg.createMessageComponentCollector({ filter, idle: 5 * 60 * 1000 });
 
 		async function renderCleaningPage() {
             const rowMenu = new ActionRowBuilder().addComponents(buildCleaningMenuSlice());
@@ -334,17 +334,17 @@ async function openCleaningShop(client, interaction, msg) {
 			}
 		}
 		await renderCleaningPage();
-		const nonOwnerCollector = msg.createMessageComponentCollector({ filter: (x) => x.user.id !== interaction.user.id, time: 5 * 60 * 1000 });
+		const nonOwnerCollector = msg.createMessageComponentCollector({ filter: (x) => x.user.id !== interaction.user.id, idle: 5 * 60 * 1000 });
 		nonOwnerCollector.on('collect', async (menu) => { try { await menu.reply({ embeds: [new EmbedBuilder().setColor(client.color).setDescription("เมนูนี้สำหรับผู้ที่เรียกคำสั่งเท่านั้น")], flags: MessageFlags.Ephemeral }); } catch {} });
 
 		collector.on('collect', async (menu) => {
 			try {
 				if (menu.isButton() && menu.customId.startsWith('cleaning_shop_')) {
 					await safeDeferUpdate(menu);
-					if (menu.customId.endsWith('_first')) page = 0;
+					if (menu.customId.endsWith('_first')) page = Math.max(0, page - 5);
 					if (menu.customId.endsWith('_prev')) page = Math.max(0, page - 1);
 					if (menu.customId.endsWith('_next')) page = Math.min(totalPages - 1, page + 1);
-					if (menu.customId.endsWith('_last')) page = totalPages - 1;
+					if (menu.customId.endsWith('_last')) page = Math.min(totalPages - 1, page + 5);
 					if (menu.customId.endsWith('_back')) {
 						collector.stop();
 						try { nonOwnerCollector.stop(); } catch {}
@@ -429,7 +429,7 @@ async function openCleaningShop(client, interaction, msg) {
 		});
 
 		collector.on('end', async (collected, reason) => {
-			if (reason === 'time') { 
+			if (reason === 'idle') { 
 				try { 
 					const timed = new EmbedBuilder().setColor(client.color).setDescription("หมดเวลาช้อปแล้ว"); 
 					await msg.edit({ embeds: [timed], components: [], files: [] }); 
@@ -497,7 +497,7 @@ async function openFoodShop(client, interaction, msg) {
             .setImage("https://cdn.jsdelivr.net/gh/Earth-J/cdn-files@main/shop/food-shop.png");
 
 		const filter = (m) => m.user.id === interaction.user.id;
-		const collector = msg.createMessageComponentCollector({ filter, time: 5 * 60 * 1000 });
+		const collector = msg.createMessageComponentCollector({ filter, idle: 5 * 60 * 1000 });
 
 		async function renderFoodPage() {
             const rowMenu = new ActionRowBuilder().addComponents(buildFoodMenuSlice());
@@ -515,17 +515,17 @@ async function openFoodShop(client, interaction, msg) {
 			}
 		}
 		await renderFoodPage();
-		const nonOwnerCollector = msg.createMessageComponentCollector({ filter: (x) => x.user.id !== interaction.user.id, time: 5 * 60 * 1000 });
+		const nonOwnerCollector = msg.createMessageComponentCollector({ filter: (x) => x.user.id !== interaction.user.id, idle: 5 * 60 * 1000 });
 		nonOwnerCollector.on('collect', async (menu) => { try { await menu.reply({ embeds: [new EmbedBuilder().setColor(client.color).setDescription("เมนูนี้สำหรับผู้ที่เรียกคำสั่งเท่านั้น")], flags: MessageFlags.Ephemeral }); } catch {} });
 
 		collector.on('collect', async (menu) => {
 			try {
 				if (menu.isButton() && menu.customId.startsWith('food_shop_')) {
 					await safeDeferUpdate(menu);
-					if (menu.customId.endsWith('_first')) page = 0;
+					if (menu.customId.endsWith('_first')) page = Math.max(0, page - 5);
 					if (menu.customId.endsWith('_prev')) page = Math.max(0, page - 1);
 					if (menu.customId.endsWith('_next')) page = Math.min(totalPages - 1, page + 1);
-					if (menu.customId.endsWith('_last')) page = totalPages - 1;
+					if (menu.customId.endsWith('_last')) page = Math.min(totalPages - 1, page + 5);
 					if (menu.customId.endsWith('_back')) {
 						collector.stop();
 						try { nonOwnerCollector.stop(); } catch {}
@@ -545,72 +545,83 @@ async function openFoodShop(client, interaction, msg) {
 				const [foodId] = menu.values;
 				const food = PET_FOODS.find(x => x.id === foodId);
 				if (!food) return;
-				if ((profile?.money || 0) < food.price) { 
- 					return menu.followUp({ embeds: [new EmbedBuilder().setColor(client.color).setDescription(`ยอดเงินไม่พอ ราคา: ${food.price}`)] }); 
-				}
-				
-                // ทำธุรกรรมแบบอะตอมมิก: หักเงินและเพิ่มของในครั้งเดียว
-                const session = await GProfile.startSession();
-                try {
-                    session.startTransaction();
-
-                    // หักเงิน (ตรวจสอบยอดเงินอีกรอบใน DB เพื่อกัน race)
-                    const updatedProfile = await GProfile.findOneAndUpdate(
-                        { guild: interaction.guild.id, user: interaction.user.id, money: { $gte: food.price } },
-                        { $inc: { money: -food.price } },
-                        { new: true, session }
-                    );
-                    if (!updatedProfile) {
-                        await session.abortTransaction();
-                        await session.endSession();
-                        return menu.followUp({ embeds: [new EmbedBuilder().setColor(client.color).setDescription(`ยอดเงินไม่พอ ราคา: ${food.price}`)] });
-                    }
-
-                    // เพิ่มไอเท็มอาหารเข้าคลัง
-                    const newItem = {
-                        id: generateID(),
-                        name: food.name,
-                        type: food.type,
-                        feed: food.feed,
-                        exp: food.exp,
-                        emoji: food.emoji
-                    };
-
-                    await GInv.updateOne(
-                        { guild: interaction.guild.id, user: interaction.user.id },
-                        { $push: { item: newItem } },
-                        { upsert: true, session }
-                    );
-
-                    await session.commitTransaction();
-                    await session.endSession();
-                } catch (txErr) {
-                    try { await session.abortTransaction(); } catch {}
-                    try { await session.endSession(); } catch {}
-                    throw txErr;
-                }
-				
-				// อัปเดต cooldown
-				shopCooldowns.set(interaction.user.id, Date.now());
-				
-				const done = new EmbedBuilder()
-					.setColor('#80DB79')
-					.setTitle('ซื้อสำเร็จ :')
-					.setDescription(`\` - \` 1x ${food.name}`);
-				try {
-					await msg.edit({ embeds: [done], components: [], files: [] });
-				} catch (error) {
-					if (error.code !== 10008) {
-						console.error("Error editing message after food purchase:", error);
+				// ขอให้ผู้ใช้พิมพ์จำนวนที่จะซื้อ
+				try { await menu.followUp({ embeds: [new EmbedBuilder().setColor(client.color).setDescription(`พิมพ์จำนวนที่จะซื้อของ ${food.emoji} ${food.name} (1-99) ภายใน 30 วินาที`)], flags: MessageFlags.Ephemeral }); } catch {}
+				const channel = interaction.channel;
+				if (!channel) return;
+				const qtyFilter = (m) => m.author.id === interaction.user.id;
+				const qtyCollector = channel.createMessageCollector({ filter: qtyFilter, time: 30 * 1000, max: 1 });
+				qtyCollector.on('collect', async (m) => {
+					let qty = parseInt((m.content || '').trim(), 10);
+					if (!Number.isFinite(qty) || qty < 1 || qty > 99) {
+						try { await menu.followUp({ embeds: [new EmbedBuilder().setColor(client.color).setDescription('จำนวนไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง')], flags: MessageFlags.Ephemeral }); } catch {}
+						return;
 					}
-				}
-				collector.stop();
-				try { nonOwnerCollector.stop(); } catch {}
+					const totalPrice = food.price * qty;
+					if ((profile?.money || 0) < totalPrice) {
+						try { await menu.followUp({ embeds: [new EmbedBuilder().setColor(client.color).setDescription(`ยอดเงินไม่พอ ราคา: ${Commas(totalPrice)}`)], flags: MessageFlags.Ephemeral }); } catch {}
+						return;
+					}
+					// ทำธุรกรรมแบบอะตอมมิก: หักเงินและเพิ่มของตามจำนวน
+					const session = await GProfile.startSession();
+					try {
+						session.startTransaction();
+						const updatedProfile = await GProfile.findOneAndUpdate(
+							{ guild: interaction.guild.id, user: interaction.user.id, money: { $gte: totalPrice } },
+							{ $inc: { money: -totalPrice } },
+							{ new: true, session }
+						);
+						if (!updatedProfile) {
+							await session.abortTransaction();
+							await session.endSession();
+							try { await menu.followUp({ embeds: [new EmbedBuilder().setColor(client.color).setDescription(`ยอดเงินไม่พอ ราคา: ${Commas(totalPrice)}`)], flags: MessageFlags.Ephemeral }); } catch {}
+							return;
+						}
+
+						const items = Array.from({ length: qty }, () => ({
+							id: generateID(),
+							name: food.name,
+							type: food.type,
+							feed: food.feed,
+							exp: food.exp,
+							emoji: food.emoji
+						}));
+
+						await GInv.updateOne(
+							{ guild: interaction.guild.id, user: interaction.user.id },
+							{ $push: { item: { $each: items } } },
+							{ upsert: true, session }
+						);
+
+						await session.commitTransaction();
+						await session.endSession();
+					} catch (txErr) {
+						try { await session.abortTransaction(); } catch {}
+						try { await session.endSession(); } catch {}
+						console.error('food buy quantity tx error:', txErr);
+						return;
+					}
+
+					// อัปเดต cooldownและแจ้งผล
+					shopCooldowns.set(interaction.user.id, Date.now());
+					const done = new EmbedBuilder()
+						.setColor('#80DB79')
+						.setTitle('ซื้อสำเร็จ :')
+						.setDescription(`\` - \` ${qty}x ${food.name}`);
+					try { await msg.edit({ embeds: [done], components: [], files: [] }); } catch (error) { if (error.code !== 10008) { console.error('Error editing message after food qty purchase:', error); } }
+					collector.stop();
+					try { nonOwnerCollector.stop(); } catch {}
+				});
+				qtyCollector.on('end', async (collected) => {
+					if (collected.size === 0) {
+						try { await menu.followUp({ embeds: [new EmbedBuilder().setColor(client.color).setDescription('หมดเวลาเลือกจำนวนแล้ว')], flags: MessageFlags.Ephemeral }); } catch {}
+					}
+				});
 			} catch (e) { console.error("food buy error:", e); }
 		});
 
 		collector.on('end', async (collected, reason) => {
-			if (reason === 'time') { 
+			if (reason === 'idle') { 
 				try { 
 					const timed = new EmbedBuilder().setColor(client.color).setDescription("หมดเวลาช้อปเเล้ว"); 
 					await msg.edit({ embeds: [timed], components: [], files: [] }); 
